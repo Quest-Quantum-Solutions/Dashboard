@@ -174,6 +174,7 @@ def compute_metrics(series, benchmark):
         "Annual Hit Ratio vs Benchmark": f"{annual_hit:.1%}"
     }
 
+
 # --- Date slider ---
 start_date, end_date = st.slider(
     "📅 Select Date Range",
