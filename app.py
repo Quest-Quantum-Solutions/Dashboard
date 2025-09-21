@@ -23,15 +23,12 @@ def set_png_as_page_bg(png_file):
     .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
         background: transparent !important;
     }}
-    .stDataFrame [data-testid="stTable"], .stDataFrame table {{
+    /* Transparent tables */
+    .stDataFrame [data-testid="stTable"], .stDataFrame table, table, th, td, .stTable td {{
         background: transparent !important;
         color: white !important;
     }}
-    table {{
-        background: transparent !important;
-        color: white !important;
-    }}
-    th, td {{
+    .stExpander [data-testid="stTable"] table {{
         background: transparent !important;
         color: white !important;
     }}
@@ -173,7 +170,6 @@ def compute_metrics(series, benchmark):
         "Quarterly Hit Ratio vs Benchmark": f"{quarterly_hit:.1%}",
         "Annual Hit Ratio vs Benchmark": f"{annual_hit:.1%}"
     }
-
 
 # --- Date slider ---
 start_date, end_date = st.slider(
