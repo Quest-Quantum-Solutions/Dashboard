@@ -349,6 +349,22 @@ with col_left:
     else:
         st.info("No weights available in this date range.")
 
+#with col_right:
+#    if data:
+#        avg_weights = stack_df.mean() * 100
+#        summary_table = pd.DataFrame({
+#            "Description": [ticker_descriptions.get(t, "N/A") for t in avg_weights.index],
+#            "Weight (%)": avg_weights.round(2).astype(str) + "%",
+#            "": [color_map[t] for t in avg_weights.index]
+#        }, index=avg_weights.index)
+#
+#        def color_square(color):
+#            return f'<div style="width:18px;height:18px;background-color:{color};border-radius:3px;margin:auto"></div>'
+#
+#        summary_table[""] = summary_table[""].apply(color_square)
+#        st.markdown(summary_table.to_html(escape=False), unsafe_allow_html=True)
+#
+
 with col_right:
     if data:
         avg_weights = stack_df.mean() * 100
@@ -362,4 +378,14 @@ with col_right:
             return f'<div style="width:18px;height:18px;background-color:{color};border-radius:3px;margin:auto"></div>'
 
         summary_table[""] = summary_table[""].apply(color_square)
-        st.markdown(summary_table.to_html(escape=False), unsafe_allow_html=True)
+
+        # --- Render black table for summary ---
+        def render_black_summary_table(df):
+            html = df.to_html(escape=False)
+            html = html.replace('<table border="1" class="dataframe">', 
+                                '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
+            html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
+            html = html.replace('<td>', '<td style="background-color:black;color:white;">')
+            st.markdown(html, unsafe_allow_html=True)
+
+        render_black_summary_table(summary_table)
