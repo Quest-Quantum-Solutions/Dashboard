@@ -9,7 +9,7 @@ import base64
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
-# --- Set Background Image and Table Styles ---
+# --- Set Background Image ---
 def set_png_as_page_bg(png_file):
     with open(png_file, "rb") as f:
         data = f.read()
@@ -20,17 +20,7 @@ def set_png_as_page_bg(png_file):
         background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
         background-size: cover;
     }}
-    /* Set all Streamlit tables to black background and white text */
-    .stDataFrame, .stDataFrame table, table, th, td, .stTable td {{
-        background-color: #000000 !important;
-        color: white !important;
-    }}
-    .stExpander [data-testid="stTable"] table {{
-        background-color: #000000 !important;
-        color: white !important;
-    }}
-    /* Keep other Streamlit components transparent or default */
-    .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
+    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
         background: transparent !important;
     }}
     </style>
@@ -95,6 +85,7 @@ with col_r:
         horizontal=True
     )
 
+    # Map period to start date for relative return
     latest_date = df.index.max()
     if period == "1D":
         start = latest_date - pd.Timedelta(days=1)
@@ -128,11 +119,13 @@ st.markdown("---")
 def compute_metrics(series, benchmark):
     series = series.dropna()
     benchmark = benchmark.loc[series.index].dropna()
+
     total_return = (1 + series).prod() - 1
     num_days = len(series)
     ann_return = (1 + total_return)**(252 / num_days) - 1 if num_days > 0 else np.nan
     vol = series.std() * np.sqrt(252) if num_days > 1 else np.nan
     sharpe = ann_return / vol if vol != 0 else np.nan
+
     cumulative = (1 + series).cumprod()
     cummax = cumulative.cummax()
     drawdowns = cumulative / cummax - 1
@@ -142,16 +135,20 @@ def compute_metrics(series, benchmark):
     post_dd = cumulative.loc[end_date:]
     recovery_date = post_dd[post_dd >= cumulative[start_date]].first_valid_index()
     recovery_days = (recovery_date - end_date).days if recovery_date is not None else np.nan
+
     monthly = series.resample('M').sum()
     benchmark_monthly = benchmark.resample('M').sum()
     benchmark_monthly = benchmark_monthly.reindex(monthly.index)
     monthly_hit = (monthly > benchmark_monthly).sum() / len(monthly) if len(monthly) > 0 else np.nan
+
     quarterly = series.resample('Q').sum()
     benchmark_quarterly = benchmark.resample('Q').sum()
     quarterly_hit = (quarterly > benchmark_quarterly).sum() / len(quarterly) if len(quarterly) > 0 else np.nan
+
     annual = series.resample('Y').sum()
     benchmark_annual = benchmark.resample('Y').sum()
     annual_hit = (annual > benchmark_annual).sum() / len(annual) if len(annual) > 0 else np.nan
+
     return {
         "Total Return (Since Inception)": f"{total_return:.2%}",
         "CAGR (Annualized)": f"{ann_return:.2%}",
@@ -177,6 +174,7 @@ if (end_date - start_date).days < 30:
     st.warning("Please select at least a 1-month window.")
     st.stop()
 
+# --- Filtered data ---
 df_filtered = df.loc[start_date:end_date]
 filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
 
@@ -193,11 +191,21 @@ metrics_df = pd.DataFrame({
 short_df = metrics_df.loc[: "Max Drawdown"]
 extra_df = metrics_df.loc["Max Drawdown":].iloc[1:]
 
-st.dataframe(short_df)
-with st.expander("🔎 Click for More Stats"):
-    st.dataframe(extra_df)
+# --- Render tables as black HTML tables ---
+def render_black_table(df):
+    html = df.to_html(escape=False)
+    html = html.replace('<table border="1" class="dataframe">', 
+                        '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
+    html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
+    html = html.replace('<td>', '<td style="background-color:black;color:white;">')
+    st.markdown(html, unsafe_allow_html=True)
 
-# --- Rest of your code (charts, weights, etc.) remains unchanged ---
+render_black_table(short_df)
+with st.expander("🔎 Click for More Stats"):
+    render_black_table(extra_df)
+
+# --- The rest of your code (charts, weights, etc.) remains unchanged ---
+
 
 
 st.markdown("---")
