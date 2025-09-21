@@ -4,30 +4,9 @@ import numpy as np
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import base64
 
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
-
-# --- Set Background Image ---
-def set_png_as_page_bg(png_file):
-    with open(png_file, "rb") as f:
-        data = f.read()
-    encoded = base64.b64encode(data).decode()
-    page_bg_img = f"""
-    <style>
-    .stApp {{
-        background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
-        background-size: cover;
-    }}
-    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
-        background: transparent !important;
-    }}
-    </style>
-    """
-    st.markdown(page_bg_img, unsafe_allow_html=True)
-
-set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
 df = pd.read_pickle("Str_Bench_RET.pkl")  # Replace with your file
@@ -141,6 +120,7 @@ def compute_metrics(series, benchmark):
     benchmark_monthly = benchmark_monthly.reindex(monthly.index)
     monthly_hit = (monthly > benchmark_monthly).sum() / len(monthly) if len(monthly) > 0 else np.nan
 
+
     quarterly = series.resample('Q').sum()
     benchmark_quarterly = benchmark.resample('Q').sum()
     quarterly_hit = (quarterly > benchmark_quarterly).sum() / len(quarterly) if len(quarterly) > 0 else np.nan
@@ -174,6 +154,7 @@ if (end_date - start_date).days < 30:
     st.warning("Please select at least a 1-month window.")
     st.stop()
 
+
 # --- Filtered data ---
 df_filtered = df.loc[start_date:end_date]
 filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
@@ -191,9 +172,20 @@ metrics_df = pd.DataFrame({
 short_df = metrics_df.loc[: "Max Drawdown"]
 extra_df = metrics_df.loc["Max Drawdown":].iloc[1:]
 
-st.dataframe(short_df)
+st.dataframe(
+    short_df.style.set_table_styles([
+        {"selector": "th", "props": "text-align: center; font-weight: bold; background-color: #1e1e1e; color: white;"},
+        {"selector": "td", "props": "text-align: center; color: white;"}
+    ])
+)
+
 with st.expander("🔎 Click for More Stats"):
-    st.dataframe(extra_df)
+    st.dataframe(
+        extra_df.style.set_table_styles([
+            {"selector": "th", "props": "text-align: center; font-weight: bold; background-color: #1e1e1e; color: white;"},
+            {"selector": "td", "props": "text-align: center; color: white;"}
+        ])
+    )
 
 st.markdown("---")
 
@@ -212,17 +204,11 @@ with col1:
     if start_date <= inception_date <= end_date:
         fig_orig.add_shape(type="line", x0=inception_date, y0=filtered.min().min(), x1=inception_date, y1=filtered.max().max(), line=dict(color="red", width=2, dash="dash"))
         fig_orig.add_annotation(x=inception_date, y=filtered.max().max(), text="Inception", showarrow=False, yanchor="bottom", yshift=20, font=dict(color="red", size=12))
-    fig_orig.update_layout(
-        title="Cumulative Return: Full History",
-        xaxis_title="Date",
-        yaxis_title="Cumulative Return",
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent
-        plot_bgcolor="rgba(0,0,0,0)"    # Transparent
-    )
+    fig_orig.update_layout(title="Cumulative Return: Full History", xaxis_title="Date", yaxis_title="Cumulative Return", template="plotly_dark", paper_bgcolor="#121212", plot_bgcolor="#121212")
     st.plotly_chart(fig_orig, use_container_width=True)
 
 with col2:
+    # Normalized to slider start
     filtered_norm = filtered / filtered.iloc[0]
     backtest_norm = filtered_norm[filtered_norm.index < inception_date]
     realtime_norm = filtered_norm[filtered_norm.index >= inception_date]
@@ -234,14 +220,7 @@ with col2:
     if start_date <= inception_date <= end_date:
         fig_norm.add_shape(type="line", x0=inception_date, y0=filtered_norm.min().min(), x1=inception_date, y1=filtered_norm.max().max(), line=dict(color="red", width=2, dash="dash"))
         fig_norm.add_annotation(x=inception_date, y=filtered_norm.max().max(), text="Inception", showarrow=False, yanchor="bottom", yshift=20, font=dict(color="red", size=12))
-    fig_norm.update_layout(
-        title="Cumulative Return: Normalized to Slider Start",
-        xaxis_title="Date",
-        yaxis_title="Normalized Return",
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent
-        plot_bgcolor="rgba(0,0,0,0)"    # Transparent
-    )
+    fig_norm.update_layout(title="Cumulative Return: Normalized to Slider Start", xaxis_title="Date", yaxis_title="Normalized Return", template="plotly_dark", paper_bgcolor="#121212", plot_bgcolor="#121212")
     st.plotly_chart(fig_norm, use_container_width=True)
 
 st.markdown("---")
@@ -251,6 +230,8 @@ periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
 for name, freq in periods.items():
     ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
     vol = df_filtered.resample(freq).std() * np.sqrt(252)
+    
+    # ✅ Drop bars beyond available data
     ret = ret.loc[ret.index <= df_filtered.index.max()]
     vol = vol.loc[vol.index <= df_filtered.index.max()]
 
@@ -259,31 +240,13 @@ for name, freq in periods.items():
         fig_ret = go.Figure()
         fig_ret.add_trace(go.Bar(x=ret.index, y=ret["Strat_Ret"], name="Strategy", marker_color="blue"))
         fig_ret.add_trace(go.Bar(x=ret.index, y=ret["Bench_Ret"], name="Benchmark (VOO)", marker_color="gray"))
-        fig_ret.update_layout(
-            title=f"{name} Returns: Strategy vs Benchmark",
-            xaxis_title=name,
-            yaxis_title="Return",
-            barmode='group',
-            yaxis_tickformat=".1%",
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
+        fig_ret.update_layout(title=f"{name} Returns: Strategy vs Benchmark", xaxis_title=name, yaxis_title="Return", barmode='group', yaxis_tickformat=".1%", template="plotly_dark", paper_bgcolor="#121212", plot_bgcolor="#121212")
         st.plotly_chart(fig_ret, use_container_width=True)
     with col2:
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Bar(x=vol.index, y=vol["Strat_Ret"], name="Strategy", marker_color="blue"))
         fig_vol.add_trace(go.Bar(x=vol.index, y=vol["Bench_Ret"], name="Benchmark (VOO)", marker_color="gray"))
-        fig_vol.update_layout(
-            title=f"{name} Volatility: Strategy vs Benchmark",
-            xaxis_title=name,
-            yaxis_title="Volatility",
-            barmode='group',
-            yaxis_tickformat=".1%",
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
+        fig_vol.update_layout(title=f"{name} Volatility: Strategy vs Benchmark", xaxis_title=name, yaxis_title="Volatility", barmode='group', yaxis_tickformat=".1%", template="plotly_dark", paper_bgcolor="#121212", plot_bgcolor="#121212")
         st.plotly_chart(fig_vol, use_container_width=True)
 
 st.markdown("---")
@@ -312,25 +275,20 @@ with col_left:
     if data:
         stack_df = pd.DataFrame(data, columns=unique_tickers, index=dates)
         fig, (ax_w, ax_pie) = plt.subplots(2, 1, figsize=(10, 12))
-        fig.patch.set_alpha(0.0)  # Transparent figure background
-        ax_w.set_facecolor((0, 0, 0, 0))  # Transparent axes
-        ax_pie.set_facecolor((0, 0, 0, 0))
+        fig.patch.set_facecolor('#121212')
+        ax_w.set_facecolor('#121212')
+        ax_pie.set_facecolor('#121212')
 
-        ax_w.stackplot(stack_df.index, (stack_df.T * 100).values, labels=unique_tickers,
-                       colors=[color_map[ticker] for ticker in unique_tickers], alpha=0.8)
+        ax_w.stackplot(stack_df.index, (stack_df.T * 100).values, labels=unique_tickers, colors=[color_map[ticker] for ticker in unique_tickers], alpha=0.8)
         ax_w.axhline(100, color='white', linestyle='--', linewidth=1)
         ax_w.set_title('Weights Over Time', color='white')
         ax_w.set_ylabel('Weight (%)', color='white')
         ax_w.tick_params(colors='white')
         ax_w.grid(True, linestyle='--', linewidth=0.5, alpha=0.7, color='gray')
-        ax_w.legend(title='Ticker', bbox_to_anchor=(1.05, 1), loc='upper left',
-                    facecolor=(0, 0, 0, 0), edgecolor='white', labelcolor='white')
+        ax_w.legend(title='Ticker', bbox_to_anchor=(1.05, 1), loc='upper left', facecolor='black', edgecolor='white', labelcolor='white')
 
         avg_weights = stack_df.mean()
-        wedges, _ = ax_pie.pie(avg_weights, startangle=90,
-                               colors=[color_map[ticker] for ticker in avg_weights.index],
-                               labels=avg_weights.index,
-                               textprops={'color': 'white', 'fontsize': 10})
+        wedges, _ = ax_pie.pie(avg_weights, startangle=90, colors=[color_map[ticker] for ticker in avg_weights.index], labels=avg_weights.index, textprops={'color': 'white', 'fontsize': 10})
         ax_pie.set_title('Average Portfolio Weights', color='white')
         st.pyplot(fig)
     else:
