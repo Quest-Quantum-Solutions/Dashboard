@@ -23,18 +23,6 @@ def set_png_as_page_bg(png_file):
     .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
         background: transparent !important;
     }}
-    .stDataFrame [data-testid="stTable"], .stDataFrame table {{
-        background: transparent !important;
-        color: white !important;
-    }}
-    table {{
-        background: transparent !important;
-        color: white !important;
-    }}
-    th, td {{
-        background: transparent !important;
-        color: white !important;
-    }}
     </style>
     """
     st.markdown(page_bg_img, unsafe_allow_html=True)
