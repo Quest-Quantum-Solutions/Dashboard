@@ -324,19 +324,25 @@ with col_left:
         weights = dict(zip(group['Ticker'], group['Rescaled_Weights']))
         row = [weights.get(ticker, 0) for ticker in unique_tickers]
         data.append(row)
-       
         dates.append(date)
 
     weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
 
+    # --- Stacked Bar Chart ---
     fig_w = go.Figure()
+    prev = np.zeros(len(weights_matrix))
     for ticker in unique_tickers:
-        fig_w.add_trace(go.Bar(
+        fig_w.add_trace(go.Scatter(
             x=weights_matrix.index,
-            y=weights_matrix[ticker],
+            y=prev + weights_matrix[ticker],
+            mode='lines',
+            line=dict(width=0.5, color=color_map[ticker]),
+            fill='tonexty',
             name=ticker,
-            marker_color=color_map.get(ticker, None)
+            hoverinfo='x+y+name'
         ))
+        prev += weights_matrix[ticker].values
+
 
     fig_w.update_layout(
         title="Portfolio Weights Over Time",
@@ -346,9 +352,26 @@ with col_left:
         yaxis=dict(tickformat=".0%"),
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend=dict(traceorder="normal")
     )
     st.plotly_chart(fig_w, use_container_width=True)
+
+    # --- Pie Chart for Average Weights ---
+    avg_weights = weights_matrix.mean()
+    fig_pie = go.Figure(go.Pie(
+        labels=avg_weights.index,
+        values=avg_weights.values,
+        marker_colors=[color_map[t] for t in avg_weights.index],
+        hole=0.3
+    ))
+    fig_pie.update_layout(
+        title="Average Portfolio Weights",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_pie, use_container_width=True)
 
 with col_right:
     st.subheader("Ticker Descriptions")
