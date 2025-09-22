@@ -328,7 +328,7 @@ with col_left:
 
     weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
 
-    # --- Stacked Bar Chart ---
+    # --- Dynamic Weights ---
     fig_w = go.Figure()
     prev = np.zeros(len(weights_matrix))
     for ticker in unique_tickers:
