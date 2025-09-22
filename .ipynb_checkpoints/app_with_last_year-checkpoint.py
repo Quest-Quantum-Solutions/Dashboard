@@ -30,7 +30,7 @@ def set_png_as_page_bg(png_file):
 set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
-df = pd.read_pickle("Str_Bench_RET.pkl")
+df = pd.read_pickle("Str_Bench_RET.pkl")  # Replace with your file
 df.index = pd.to_datetime(df["Date"])
 df = df[["Strat_Ret", "Bench_Ret"]]
 
@@ -265,6 +265,7 @@ for name, freq in periods.items():
     ret = ret.loc[ret.index <= df_filtered.index.max()]
     vol = vol.loc[vol.index <= df_filtered.index.max()]
 
+    # Limit Monthly and Quarterly to last 12 months if selected
     if name in ["Monthly", "Quarterly"] and view_option == "Last 1Y":
         cutoff = df_filtered.index.max() - pd.DateOffset(years=1)
         ret = ret.loc[ret.index >= cutoff]
@@ -304,7 +305,7 @@ for name, freq in periods.items():
 
 st.markdown("---")
 
-# --- Updated Weights Distribution & Summary ---
+# --- Weights Distribution & Descriptions ---
 st.subheader("📊 Portfolio Weights Distribution")
 col_left, col_right = st.columns([2, 1])
 
@@ -317,76 +318,37 @@ with col_left:
     color_map = dict(zip(unique_tickers, colors_hex))
     color_map['VOO'] = '#BBBBBB'
 
-    # Build weights matrix
     date_groups = filtered_df.groupby(filtered_df.index)
     data, dates = [], []
     for date, group in date_groups:
-        weights_dict = dict(zip(group['Ticker'], group['Rescaled_Weights']))
-        row = [weights_dict.get(ticker, 0) for ticker in unique_tickers]
+        weights = dict(zip(group['Ticker'], group['Rescaled_Weights']))
+        row = [weights.get(ticker, 0) for ticker in unique_tickers]
         data.append(row)
+       
         dates.append(date)
 
-    if data:
-        weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
+    weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
 
-        # --- Stacked Bar Chart ---
-        fig_stack = go.Figure()
-        for ticker in unique_tickers:
-            fig_stack.add_trace(go.Bar(
-                x=weights_matrix.index,
-                y=weights_matrix[ticker],
-                name=ticker,
-                marker_color=color_map.get(ticker)
-            ))
-        fig_stack.update_layout(
-            title="Portfolio Weights Over Time",
-            barmode="stack",
-            xaxis_title="Date",
-            yaxis_title="Weight",
-            yaxis=dict(tickformat=".0%"),
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
-        st.plotly_chart(fig_stack, use_container_width=True)
-
-        # --- Pie Chart of Average Weights ---
-        avg_weights = weights_matrix.mean()
-        fig_pie = go.Figure(go.Pie(
-            labels=avg_weights.index,
-            values=avg_weights.values,
-            marker_colors=[color_map[t] for t in avg_weights.index],
-            textinfo="label+percent"
+    fig_w = go.Figure()
+    for ticker in unique_tickers:
+        fig_w.add_trace(go.Bar(
+            x=weights_matrix.index,
+            y=weights_matrix[ticker],
+            name=ticker,
+            marker_color=color_map.get(ticker, None)
         ))
-        fig_pie.update_layout(title="Average Portfolio Weights", template="plotly_dark",
-                              paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig_pie, use_container_width=True)
 
-        # --- Summary Table ---
-        avg_weights_pct = avg_weights * 100
-        summary_table = pd.DataFrame({
-            "Description": [ticker_descriptions.get(t, "N/A") for t in avg_weights.index],
-            "Weight (%)": avg_weights_pct.round(2).astype(str) + "%",
-            "Color": [color_map[t] for t in avg_weights.index]
-        }, index=avg_weights.index)
-
-        def color_square(color):
-            return f'<div style="width:18px;height:18px;background-color:{color};border-radius:3px;margin:auto"></div>'
-
-        summary_table["Color"] = summary_table["Color"].apply(color_square)
-
-        def render_black_summary_table(df):
-            html = df.to_html(escape=False)
-            html = html.replace('<table border="1" class="dataframe">', 
-                                '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
-            html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
-            html = html.replace('<td>', '<td style="background-color:black;color:white;">')
-            st.markdown(html, unsafe_allow_html=True)
-
-        render_black_summary_table(summary_table)
-
-    else:
-        st.info("No weights available in this date range.")
+    fig_w.update_layout(
+        title="Portfolio Weights Over Time",
+        barmode="stack",
+        xaxis_title="Date",
+        yaxis_title="Weight",
+        yaxis=dict(tickformat=".0%"),
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_w, use_container_width=True)
 
 with col_right:
     st.subheader("Ticker Descriptions")
