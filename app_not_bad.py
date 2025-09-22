@@ -330,19 +330,13 @@ with col_left:
 
     # --- Stacked Bar Chart ---
     fig_w = go.Figure()
-    prev = np.zeros(len(weights_matrix))
     for ticker in unique_tickers:
-        fig_w.add_trace(go.Scatter(
+        fig_w.add_trace(go.Bar(
             x=weights_matrix.index,
-            y=prev + weights_matrix[ticker],
-            mode='lines',
-            line=dict(width=0.5, color=color_map[ticker]),
-            fill='tonexty',
+            y=weights_matrix[ticker],
             name=ticker,
-            hoverinfo='x+y+name'
+            marker_color=color_map.get(ticker, None)
         ))
-        prev += weights_matrix[ticker].values
-
 
     fig_w.update_layout(
         title="Portfolio Weights Over Time",
