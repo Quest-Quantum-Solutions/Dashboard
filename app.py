@@ -20,14 +20,8 @@ def set_png_as_page_bg(png_file):
         background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
         background-size: cover;
     }}
-    /* Force all text to white for visibility on Windows & Mac */
-    html, body, [class*="st-"], .stMarkdown, .stText, .stTitle, .stSubheader, .stRadio, .stSlider, .stExpander {{
-        color: #FFFFFF !important;
-    }}
-    table.dataframe, .dataframe th, .dataframe td {{
-        background-color: black !important;
-        color: #FFFFFF !important;
-        border: 1px solid white !important;
+    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
+        background: transparent !important;
     }}
     </style>
     """
@@ -115,7 +109,7 @@ with col_r:
         color = "green" if rel_return >= 0 else "red"
         st.markdown(
             f"<h2 style='text-align:right; color:{color};'>{arrow} {rel_return:.2%}</h2>"
-            f"<p style='text-align:right; color:white;'>Latest update: {latest_date.date()}</p>",
+            f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
             unsafe_allow_html=True
         )
 
@@ -233,8 +227,7 @@ with col1:
         yaxis_title="Cumulative Return",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="white")  # Force white font for Windows
+        plot_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_orig, use_container_width=True)
 
@@ -256,23 +249,27 @@ with col2:
         yaxis_title="Normalized Return",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="white")
+        plot_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_norm, use_container_width=True)
-
-# (rest of your code remains unchanged — I only added `font=dict(color="white")` for charts and CSS for all text)
-
 
 st.markdown("---")
 
 # --- Monthly, Quarterly, Annual Returns & Volatility ---
+view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
+
 periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
 for name, freq in periods.items():
     ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
     vol = df_filtered.resample(freq).std() * np.sqrt(252)
     ret = ret.loc[ret.index <= df_filtered.index.max()]
     vol = vol.loc[vol.index <= df_filtered.index.max()]
+
+    # Limit Monthly and Quarterly to last 12 months if selected
+    if name in ["Monthly", "Quarterly"] and view_option == "Last 1Y":
+        cutoff = df_filtered.index.max() - pd.DateOffset(years=1)
+        ret = ret.loc[ret.index >= cutoff]
+        vol = vol.loc[vol.index >= cutoff]
 
     col1, col2 = st.columns(2)
     with col1:
@@ -327,72 +324,38 @@ with col_left:
         weights = dict(zip(group['Ticker'], group['Rescaled_Weights']))
         row = [weights.get(ticker, 0) for ticker in unique_tickers]
         data.append(row)
+       
         dates.append(date)
 
-    if data:
-        stack_df = pd.DataFrame(data, columns=unique_tickers, index=dates)
-        fig, (ax_w, ax_pie) = plt.subplots(2, 1, figsize=(10, 12))
-        fig.patch.set_alpha(0.0)  # Transparent figure background
-        ax_w.set_facecolor((0, 0, 0, 0))  # Transparent axes
-        ax_pie.set_facecolor((0, 0, 0, 0))
+    weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
 
-        ax_w.stackplot(stack_df.index, (stack_df.T * 100).values, labels=unique_tickers,
-                       colors=[color_map[ticker] for ticker in unique_tickers], alpha=0.8)
-        ax_w.axhline(100, color='white', linestyle='--', linewidth=1)
-        ax_w.set_title('Weights Over Time', color='white')
-        ax_w.set_ylabel('Weight (%)', color='white')
-        ax_w.tick_params(colors='white')
-        ax_w.grid(True, linestyle='--', linewidth=0.5, alpha=0.7, color='gray')
-        ax_w.legend(title='Ticker', bbox_to_anchor=(1.05, 1), loc='upper left',
-                    facecolor=(0, 0, 0, 0), edgecolor='white', labelcolor='white')
+    fig_w = go.Figure()
+    for ticker in unique_tickers:
+        fig_w.add_trace(go.Bar(
+            x=weights_matrix.index,
+            y=weights_matrix[ticker],
+            name=ticker,
+            marker_color=color_map.get(ticker, None)
+        ))
 
-        avg_weights = stack_df.mean()
-        wedges, _ = ax_pie.pie(avg_weights, startangle=90,
-                               colors=[color_map[ticker] for ticker in avg_weights.index],
-                               labels=avg_weights.index,
-                               textprops={'color': 'white', 'fontsize': 10})
-        ax_pie.set_title('Average Portfolio Weights', color='white')
-        st.pyplot(fig)
-    else:
-        st.info("No weights available in this date range.")
-
-#with col_right:
-#    if data:
-#        avg_weights = stack_df.mean() * 100
-#        summary_table = pd.DataFrame({
-#            "Description": [ticker_descriptions.get(t, "N/A") for t in avg_weights.index],
-#            "Weight (%)": avg_weights.round(2).astype(str) + "%",
-#            "": [color_map[t] for t in avg_weights.index]
-#        }, index=avg_weights.index)
-#
-#        def color_square(color):
-#            return f'<div style="width:18px;height:18px;background-color:{color};border-radius:3px;margin:auto"></div>'
-#
-#        summary_table[""] = summary_table[""].apply(color_square)
-#        st.markdown(summary_table.to_html(escape=False), unsafe_allow_html=True)
-#
+    fig_w.update_layout(
+        title="Portfolio Weights Over Time",
+        barmode="stack",
+        xaxis_title="Date",
+        yaxis_title="Weight",
+        yaxis=dict(tickformat=".0%"),
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_w, use_container_width=True)
 
 with col_right:
-    if data:
-        avg_weights = stack_df.mean() * 100
-        summary_table = pd.DataFrame({
-            "Description": [ticker_descriptions.get(t, "N/A") for t in avg_weights.index],
-            "Weight (%)": avg_weights.round(2).astype(str) + "%",
-            "": [color_map[t] for t in avg_weights.index]
-        }, index=avg_weights.index)
+    st.subheader("Ticker Descriptions")
+    for ticker, desc in ticker_descriptions.items():
+        st.markdown(f"**{ticker}**: {desc}")
 
-        def color_square(color):
-            return f'<div style="width:18px;height:18px;background-color:{color};border-radius:3px;margin:auto"></div>'
+st.markdown("---")
 
-        summary_table[""] = summary_table[""].apply(color_square)
-
-        # --- Render black table for summary ---
-        def render_black_summary_table(df):
-            html = df.to_html(escape=False)
-            html = html.replace('<table border="1" class="dataframe">', 
-                                '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
-            html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
-            html = html.replace('<td>', '<td style="background-color:black;color:white;">')
-            st.markdown(html, unsafe_allow_html=True)
-
-        render_black_summary_table(summary_table)
+# --- Final Note ---
+st.caption("AdaptiveShield-VT18 Dashboard © Quest Quantum Solutions")
