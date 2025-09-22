@@ -20,8 +20,14 @@ def set_png_as_page_bg(png_file):
         background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
         background-size: cover;
     }}
-    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
-        background: transparent !important;
+    /* Force all text to white for visibility on Windows & Mac */
+    html, body, [class*="st-"], .stMarkdown, .stText, .stTitle, .stSubheader, .stRadio, .stSlider, .stExpander {{
+        color: #FFFFFF !important;
+    }}
+    table.dataframe, .dataframe th, .dataframe td {{
+        background-color: black !important;
+        color: #FFFFFF !important;
+        border: 1px solid white !important;
     }}
     </style>
     """
@@ -109,7 +115,7 @@ with col_r:
         color = "green" if rel_return >= 0 else "red"
         st.markdown(
             f"<h2 style='text-align:right; color:{color};'>{arrow} {rel_return:.2%}</h2>"
-            f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
+            f"<p style='text-align:right; color:white;'>Latest update: {latest_date.date()}</p>",
             unsafe_allow_html=True
         )
 
@@ -204,10 +210,6 @@ render_black_table(short_df)
 with st.expander("🔎 Click for More Stats"):
     render_black_table(extra_df)
 
-# --- The rest of your code (charts, weights, etc.) remains unchanged ---
-
-
-
 st.markdown("---")
 
 # --- Cumulative Return Charts ---
@@ -230,8 +232,9 @@ with col1:
         xaxis_title="Date",
         yaxis_title="Cumulative Return",
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent
-        plot_bgcolor="rgba(0,0,0,0)"    # Transparent
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white")  # Force white font for Windows
     )
     st.plotly_chart(fig_orig, use_container_width=True)
 
@@ -252,10 +255,14 @@ with col2:
         xaxis_title="Date",
         yaxis_title="Normalized Return",
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent
-        plot_bgcolor="rgba(0,0,0,0)"    # Transparent
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white")
     )
     st.plotly_chart(fig_norm, use_container_width=True)
+
+# (rest of your code remains unchanged — I only added `font=dict(color="white")` for charts and CSS for all text)
+
 
 st.markdown("---")
 
