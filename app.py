@@ -331,17 +331,18 @@ with col_left:
     # --- Dynamic Weights ---
     fig_w = go.Figure()
     prev = np.zeros(len(weights_matrix))
-    for ticker in unique_tickers:
+    for i, ticker in enumerate(unique_tickers):
         fig_w.add_trace(go.Scatter(
             x=weights_matrix.index,
             y=prev + weights_matrix[ticker],
             mode='lines',
-            line=dict(width=0, color='rgba(0,0,0,0)'),  # no top line
-            fill='tonexty',
+            line=dict(width=0.5, color=color_map[ticker] if i>0 else color_map[ticker]),  # first trace has visible color
+            fill='tonexty' if i > 0 else 'tozeroy',  # first trace fills to zero
             name=ticker,
             hoverinfo='x+y+name'
         ))
         prev += weights_matrix[ticker].values
+
 
 
 
