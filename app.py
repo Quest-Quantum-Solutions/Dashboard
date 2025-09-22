@@ -366,7 +366,11 @@ with col_left:
     fig_pie = go.Figure(go.Pie(
         labels=avg_weights.index,
         values=avg_weights.values,
-        marker_colors=[f'rgba{(*mcolors.to_rgb(color_map[t]), 0.8)}' for t in avg_weights.index],
+        marker_colors=[
+            f"rgba({int(r*255)},{int(g*255)},{int(b*255)},{0.8})"
+            for t in avg_weights.index
+            for r, g, b in [mcolors.to_rgb(color_map[t])]
+        ],
         hole=0.3
     ))
     fig_pie.update_layout(
