@@ -331,31 +331,33 @@ with col_left:
     # --- Dynamic Weights ---
     fig_w = go.Figure()
     prev = np.zeros(len(weights_matrix))
-    for ticker in unique_tickers:
+    
+    for i, ticker in enumerate(unique_tickers):
         fig_w.add_trace(go.Scatter(
             x=weights_matrix.index,
             y=prev + weights_matrix[ticker],
             mode='lines',
-            line=dict(width=0.5, color=color_map[ticker]),
-            fill='tonexty',
+            line=dict(width=0, color='rgba(0,0,0,0)'),  # fully transparent line
+            fill='tozeroy' if i == 0 else 'tonexty',   # first trace from zero, rest stack
+            fillcolor=color_map[ticker],               # area color
             name=ticker,
             hoverinfo='x+y+name'
         ))
         prev += weights_matrix[ticker].values
-
-
+    
     fig_w.update_layout(
         title="Portfolio Weights Over Time",
-        barmode="stack",
         xaxis_title="Date",
         yaxis_title="Weight",
         yaxis=dict(tickformat=".0%"),
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        legend=dict(traceorder="normal")
+        showlegend=True
     )
+    
     st.plotly_chart(fig_w, use_container_width=True)
+
 
     # --- Pie Chart for Average Weights ---
     avg_weights = weights_matrix.mean()

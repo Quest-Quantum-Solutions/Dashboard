@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import base64
+import matplotlib.colors as mcolors
+
 
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
@@ -339,7 +341,7 @@ with col_left:
             mode='lines',
             line=dict(width=0, color='rgba(0,0,0,0)'),  # fully transparent line
             fill='tozeroy' if i == 0 else 'tonexty',   # first trace from zero, rest stack
-            fillcolor=color_map[ticker],               # area color
+            fillcolor=f'rgba{(*mcolors.to_rgb(color_map[ticker]), 0.7)}', # area color
             name=ticker,
             hoverinfo='x+y+name'
         ))
@@ -364,7 +366,7 @@ with col_left:
     fig_pie = go.Figure(go.Pie(
         labels=avg_weights.index,
         values=avg_weights.values,
-        marker_colors=[color_map[t] for t in avg_weights.index],
+        marker_colors=[f'rgba{(*mcolors.to_rgb(color_map[t]), 0.8)}' for t in avg_weights.index],
         hole=0.3
     ))
     fig_pie.update_layout(
