@@ -284,7 +284,8 @@ with col2:
 st.markdown("---")
 
 
-show_more = st.button("📈 Click for More Performance")
+#show_more = st.button("📈 Click for More Performance")
+show_more = st.checkbox("📈 Click for More Performance")
 
 if show_more:
     # --- Monthly, Quarterly, Annual Returns & Volatility ---
