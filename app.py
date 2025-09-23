@@ -12,22 +12,48 @@ import matplotlib.colors as mcolors
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
 # --- Set Background Image ---
+#def set_png_as_page_bg(png_file):
+#    with open(png_file, "rb") as f:
+#        data = f.read()
+#    encoded = base64.b64encode(data).decode()
+#    page_bg_img = f"""
+#    <style>
+#    .stApp {{
+#        background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
+#        background-size: cover;
+#    }}
+#    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
+#        background: transparent !important;
+#    }}
+#    </style>
+#    """
+#    st.markdown(page_bg_img, unsafe_allow_html=True)
 def set_png_as_page_bg(png_file):
     with open(png_file, "rb") as f:
-        data = f.read()
-    encoded = base64.b64encode(data).decode()
-    page_bg_img = f"""
-    <style>
-    .stApp {{
-        background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
-        background-size: cover;
-    }}
-    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
-        background: transparent !important;
-    }}
-    </style>
-    """
-    st.markdown(page_bg_img, unsafe_allow_html=True)
+        encoded = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
+            background-size: cover;
+        }}
+        .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
+            background: transparent !important;
+        }}
+        .stApp, .stMarkdown, .stText, .stSubheader, .stTitle, .stCaption, .stRadio, .stSlider, .stDataFrame, .stExpander {{
+            color: white !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    
+    
+
+    
+    
 
 set_png_as_page_bg("QQS_background.png")
 
