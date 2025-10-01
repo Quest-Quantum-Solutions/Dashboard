@@ -7,11 +7,10 @@ import matplotlib.cm as cm
 import base64
 import matplotlib.colors as mcolors
 
-
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
-# --- Set Background Image --
+# --- Set Background Image ---
 def set_png_as_page_bg(png_file):
     with open(png_file, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
@@ -33,16 +32,10 @@ def set_png_as_page_bg(png_file):
         unsafe_allow_html=True
     )
 
-    
-    
-
-    
-    
-
 set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
-df = pd.read_pickle("Str_Bench_RET.pkl")  # Replace with your file
+df = pd.read_pickle("Str_Bench_RET.pkl")
 df.index = pd.to_datetime(df["Date"])
 df = df[["Strat_Ret", "Bench_Ret"]]
 
@@ -79,14 +72,7 @@ df_cum = df_cum / df_cum.iloc[0]
 # --- Header ---
 st.title("📊 AdaptiveShield-VT18 Performance Dashboard")
 
-
-
-
-
-
-
-
-# --- Highlights (daily percentage only) ---
+# --- Highlights ---
 latest_date = df.index.max()
 daily_return = df["Strat_Ret"].iloc[-1]
 arrow = "▲" if daily_return >= 0 else "▼"
@@ -108,81 +94,38 @@ with col_r:
         unsafe_allow_html=True
     )
 
-# --- Period selector for metrics and charts (move above date slider) ---
+# --- Sidebar period selector ---
 st.sidebar.markdown("### Select Performance Period")
-period = st.sidebar.radio(
+period_sidebar = st.sidebar.radio(
     "",
     ["1M", "3M", "6M", "1Y", "5Y", "All"],
     index=0
 )
 
-        
-        
-        
-        
-        
-        
-        
-
 st.markdown("---")
 
-# --- Performance Metrics Function ---
-def compute_metrics(series, benchmark):
-    series = series.dropna()
-    benchmark = benchmark.loc[series.index].dropna()
+# --- Helper function to adjust start date from period ---
+def adjust_start_date(end_date, period_str):
+    if period_str.endswith("M"):
+        months = int(period_str[:-1])
+        return end_date - pd.DateOffset(months=months)
+    elif period_str.endswith("Y"):
+        years = int(period_str[:-1])
+        return end_date - pd.DateOffset(years=years)
+    else:
+        return df_cum.index.min()
 
-    total_return = (1 + series).prod() - 1
-    num_days = len(series)
-    ann_return = (1 + total_return)**(252 / num_days) - 1 if num_days > 0 else np.nan
-    vol = series.std() * np.sqrt(252) if num_days > 1 else np.nan
-    sharpe = ann_return / vol if vol != 0 else np.nan
-
-    cumulative = (1 + series).cumprod()
-    cummax = cumulative.cummax()
-    drawdowns = cumulative / cummax - 1
-    max_drawdown = drawdowns.min()
-    end_date = drawdowns.idxmin()
-    start_date = cumulative.loc[:end_date].idxmax()
-    post_dd = cumulative.loc[end_date:]
-    recovery_date = post_dd[post_dd >= cumulative[start_date]].first_valid_index()
-    recovery_days = (recovery_date - end_date).days if recovery_date is not None else np.nan
-
-    monthly = series.resample('M').sum()
-    benchmark_monthly = benchmark.resample('M').sum()
-    benchmark_monthly = benchmark_monthly.reindex(monthly.index)
-    monthly_hit = (monthly > benchmark_monthly).sum() / len(monthly) if len(monthly) > 0 else np.nan
-
-    quarterly = series.resample('Q').sum()
-    benchmark_quarterly = benchmark.resample('Q').sum()
-    quarterly_hit = (quarterly > benchmark_quarterly).sum() / len(quarterly) if len(quarterly) > 0 else np.nan
-
-    annual = series.resample('Y').sum()
-    benchmark_annual = benchmark.resample('Y').sum()
-    annual_hit = (annual > benchmark_annual).sum() / len(annual) if len(annual) > 0 else np.nan
-
-    return {
-        "Total Return (Since Inception)": f"{total_return:.2%}",
-        "CAGR (Annualized)": f"{ann_return:.2%}",
-        "Volatility (Annualized)": f"{vol:.2%}",
-        "Sharpe Ratio (CAGR / Vol)": f"{sharpe:.2f}",
-        "Max Drawdown": f"{max_drawdown:.2%}",
-        "Max Drawdown Period": f"{start_date.date()} → {end_date.date()}",
-        "Drawdown Recovery Time (Days)": f"{int(recovery_days) if not np.isnan(recovery_days) else 'Not Recovered'}",
-        "Monthly Hit Ratio vs Benchmark": f"{monthly_hit:.1%}",
-        "Quarterly Hit Ratio vs Benchmark": f"{quarterly_hit:.1%}",
-        "Annual Hit Ratio vs Benchmark": f"{annual_hit:.1%}"
-    }
-
-# --- Date slider + Period buttons in one row ---
+# --- Date slider + Period buttons in one row (fully synced) ---
 col_slider, col_period = st.columns([4, 1])
 
 with col_slider:
-    start_date, end_date = st.slider(
+    slider_range = st.slider(
         "📅 Select Date Range",
         min_value=df_cum.index.min().to_pydatetime(),
         max_value=df_cum.index.max().to_pydatetime(),
         value=(df_cum.index.min().to_pydatetime(), df_cum.index.max().to_pydatetime())
     )
+    start_date, end_date = pd.to_datetime(slider_range[0]), pd.to_datetime(slider_range[1])
 
 with col_period:
     period = st.radio(
@@ -192,23 +135,22 @@ with col_period:
         horizontal=True
     )
 
-# --- Adjust slider based on period buttons ---
+# --- Sync slider and period buttons ---
 if period != "All":
-    if period.endswith("M"):
-        months = int(period[:-1])
-        start_date = end_date - pd.DateOffset(months=months)
-    elif period.endswith("Y"):
-        years = int(period[:-1])
-        start_date = end_date - pd.DateOffset(years=years)
+    start_date = adjust_start_date(end_date, period)
+else:
+    start_date = df_cum.index.min()
 
 # --- Filter data after selection ---
 df_filtered = df.loc[start_date:end_date]
 filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
 
-
 if (end_date - start_date).days < 30:
     st.warning("Please select at least a 1-month window.")
     st.stop()
+
+    
+    
 
 # --- Filtered data ---
 df_filtered = df.loc[start_date:end_date]
