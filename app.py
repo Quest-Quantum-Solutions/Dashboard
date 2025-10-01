@@ -173,13 +173,38 @@ def compute_metrics(series, benchmark):
         "Annual Hit Ratio vs Benchmark": f"{annual_hit:.1%}"
     }
 
-# --- Date slider ---
-start_date, end_date = st.slider(
-    "📅 Select Date Range",
-    min_value=df_cum.index.min().to_pydatetime(),
-    max_value=df_cum.index.max().to_pydatetime(),
-    value=(df_cum.index.min().to_pydatetime(), df_cum.index.max().to_pydatetime())
-)
+# --- Date slider + Period buttons in one row ---
+col_slider, col_period = st.columns([4, 1])
+
+with col_slider:
+    start_date, end_date = st.slider(
+        "📅 Select Date Range",
+        min_value=df_cum.index.min().to_pydatetime(),
+        max_value=df_cum.index.max().to_pydatetime(),
+        value=(df_cum.index.min().to_pydatetime(), df_cum.index.max().to_pydatetime())
+    )
+
+with col_period:
+    period = st.radio(
+        "",
+        ["1M", "3M", "6M", "1Y", "5Y", "All"],
+        index=0,
+        horizontal=True
+    )
+
+# --- Adjust slider based on period buttons ---
+if period != "All":
+    if period.endswith("M"):
+        months = int(period[:-1])
+        start_date = end_date - pd.DateOffset(months=months)
+    elif period.endswith("Y"):
+        years = int(period[:-1])
+        start_date = end_date - pd.DateOffset(years=years)
+
+# --- Filter data after selection ---
+df_filtered = df.loc[start_date:end_date]
+filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
+
 
 if (end_date - start_date).days < 30:
     st.warning("Please select at least a 1-month window.")
