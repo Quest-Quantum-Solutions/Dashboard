@@ -285,10 +285,11 @@ st.markdown("---")
 
 
 #show_more = st.button("📈 Click for More Performance")
-show_more = st.checkbox("📈 Click for More Performance")
+#show_more = st.checkbox("📈 Click for More Performance")
 
-if show_more:
+#if show_more:
     # --- Monthly, Quarterly, Annual Returns & Volatility ---
+with st.expander("📈 Click for More Performance"):
     view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
     periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
