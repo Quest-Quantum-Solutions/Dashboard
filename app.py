@@ -11,23 +11,7 @@ import matplotlib.colors as mcolors
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
-# --- Set Background Image ---
-#def set_png_as_page_bg(png_file):
-#    with open(png_file, "rb") as f:
-#        data = f.read()
-#    encoded = base64.b64encode(data).decode()
-#    page_bg_img = f"""
-#    <style>
-#    .stApp {{
-#        background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
-#        background-size: cover;
-#    }}
-#    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
-#        background: transparent !important;
-#    }}
-#    </style>
-#    """
-#    st.markdown(page_bg_img, unsafe_allow_html=True)
+# --- Set Background Image --
 def set_png_as_page_bg(png_file):
     with open(png_file, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
@@ -95,7 +79,19 @@ df_cum = df_cum / df_cum.iloc[0]
 # --- Header ---
 st.title("📊 AdaptiveShield-VT18 Performance Dashboard")
 
-# --- Highlights and period buttons ---
+
+
+
+
+
+
+
+# --- Highlights (daily percentage only) ---
+latest_date = df.index.max()
+daily_return = df["Strat_Ret"].iloc[-1]
+arrow = "▲" if daily_return >= 0 else "▼"
+color = "green" if daily_return >= 0 else "red"
+
 col_h, col_r = st.columns([3, 1])
 with col_h:
     st.markdown("""
@@ -106,40 +102,27 @@ with col_h:
     """)
 
 with col_r:
-    period = st.radio(
-        "",  
-        ["1D", "1M", "3M", "6M", "1Y", "5Y", "All"],
-        index=0,
-        horizontal=True
+    st.markdown(
+        f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
+        f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
+        unsafe_allow_html=True
     )
 
-    # Map period to start date for relative return
-    latest_date = df.index.max()
-    if period == "1D":
-        start = latest_date - pd.Timedelta(days=1)
-    elif period == "1M":
-        start = latest_date - pd.DateOffset(months=1)
-    elif period == "3M":
-        start = latest_date - pd.DateOffset(months=3)
-    elif period == "6M":
-        start = latest_date - pd.DateOffset(months=6)
-    elif period == "1Y":
-        start = latest_date - pd.DateOffset(years=1)
-    elif period == "5Y":
-        start = latest_date - pd.DateOffset(years=5)
-    elif period == "All":
-        start = df.index.min()
+# --- Period selector for metrics and charts (move above date slider) ---
+st.sidebar.markdown("### Select Performance Period")
+period = st.sidebar.radio(
+    "",
+    ["1M", "3M", "6M", "1Y", "5Y", "All"],
+    index=0
+)
 
-    df_period = df.loc[start:latest_date]
-    if not df_period.empty:
-        rel_return = (1 + df_period["Strat_Ret"]).prod() - 1
-        arrow = "▲" if rel_return >= 0 else "▼"
-        color = "green" if rel_return >= 0 else "red"
-        st.markdown(
-            f"<h2 style='text-align:right; color:{color};'>{arrow} {rel_return:.2%}</h2>"
-            f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
-            unsafe_allow_html=True
-        )
+        
+        
+        
+        
+        
+        
+        
 
 st.markdown("---")
 

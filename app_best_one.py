@@ -11,23 +11,33 @@ import matplotlib.colors as mcolors
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
-# --- Set Background Image ---
+# --- Set Background Image --
 def set_png_as_page_bg(png_file):
     with open(png_file, "rb") as f:
-        data = f.read()
-    encoded = base64.b64encode(data).decode()
-    page_bg_img = f"""
-    <style>
-    .stApp {{
-        background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
-        background-size: cover;
-    }}
-    .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
-        background: transparent !important;
-    }}
-    </style>
-    """
-    st.markdown(page_bg_img, unsafe_allow_html=True)
+        encoded = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background: url("data:image/png;base64,{encoded}") no-repeat center center fixed;
+            background-size: cover;
+        }}
+        .stDataFrame, .stMarkdown, .stRadio, .stSlider, .stSubheader, .stTitle, .stText, .stExpander {{
+            background: transparent !important;
+        }}
+        .stApp, .stMarkdown, .stText, .stSubheader, .stTitle, .stCaption, .stRadio, .stSlider, .stDataFrame, .stExpander {{
+            color: white !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    
+    
+
+    
+    
 
 set_png_as_page_bg("QQS_background.png")
 
@@ -257,136 +267,143 @@ with col2:
 
 st.markdown("---")
 
-# --- Monthly, Quarterly, Annual Returns & Volatility ---
-view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
 
-periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
-for name, freq in periods.items():
-    ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
-    vol = df_filtered.resample(freq).std() * np.sqrt(252)
-    ret = ret.loc[ret.index <= df_filtered.index.max()]
-    vol = vol.loc[vol.index <= df_filtered.index.max()]
+#show_more = st.button("📈 Click for More Performance")
+#show_more = st.checkbox("📈 Click for More Performance")
 
-    # Limit Monthly and Quarterly to last 12 months if selected
-    if name in ["Monthly", "Quarterly"] and view_option == "Last 1Y":
-        cutoff = df_filtered.index.max() - pd.DateOffset(years=1)
-        ret = ret.loc[ret.index >= cutoff]
-        vol = vol.loc[vol.index >= cutoff]
-
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_ret = go.Figure()
-        fig_ret.add_trace(go.Bar(x=ret.index, y=ret["Strat_Ret"], name="Strategy", marker_color="blue"))
-        fig_ret.add_trace(go.Bar(x=ret.index, y=ret["Bench_Ret"], name="Benchmark (VOO)", marker_color="gray"))
-        fig_ret.update_layout(
-            title=f"{name} Returns: Strategy vs Benchmark",
-            xaxis_title=name,
-            yaxis_title="Return",
-            barmode='group',
-            yaxis_tickformat=".1%",
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
-        st.plotly_chart(fig_ret, use_container_width=True)
-    with col2:
-        fig_vol = go.Figure()
-        fig_vol.add_trace(go.Bar(x=vol.index, y=vol["Strat_Ret"], name="Strategy", marker_color="blue"))
-        fig_vol.add_trace(go.Bar(x=vol.index, y=vol["Bench_Ret"], name="Benchmark (VOO)", marker_color="gray"))
-        fig_vol.update_layout(
-            title=f"{name} Volatility: Strategy vs Benchmark",
-            xaxis_title=name,
-            yaxis_title="Volatility",
-            barmode='group',
-            yaxis_tickformat=".1%",
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
-        st.plotly_chart(fig_vol, use_container_width=True)
-
-st.markdown("---")
-
-# --- Weights Distribution & Descriptions ---
-st.subheader("📊 Portfolio Weights Distribution")
-col_left, col_right = st.columns([2, 1])
-
-with col_left:
-    filtered_df = filtered_weights[filtered_weights['Rescaled_Weights'] > 0].copy()
-    unique_tickers = sorted(filtered_df['Ticker'].unique())
-    num_tickers = len(unique_tickers)
-    colors = cm.tab20(np.linspace(0, 1, num_tickers))
-    colors_hex = [plt.cm.colors.to_hex(c) for c in colors]
-    color_map = dict(zip(unique_tickers, colors_hex))
-    color_map['VOO'] = '#BBBBBB'
-
-    date_groups = filtered_df.groupby(filtered_df.index)
-    data, dates = [], []
-    for date, group in date_groups:
-        weights = dict(zip(group['Ticker'], group['Rescaled_Weights']))
-        row = [weights.get(ticker, 0) for ticker in unique_tickers]
-        data.append(row)
-        dates.append(date)
-
-    weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
-
-    # --- Dynamic Weights ---
-    fig_w = go.Figure()
-    prev = np.zeros(len(weights_matrix))
+#if show_more:
+    # --- Monthly, Quarterly, Annual Returns & Volatility ---
+with st.expander("📈 Click for More Performance"):
+    view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
-    for i, ticker in enumerate(unique_tickers):
-        fig_w.add_trace(go.Scatter(
-            x=weights_matrix.index,
-            y=prev + weights_matrix[ticker],
-            mode='lines',
-            line=dict(width=0, color='rgba(0,0,0,0)'),  # fully transparent line
-            fill='tozeroy' if i == 0 else 'tonexty',   # first trace from zero, rest stack
-            fillcolor=f'rgba{(*mcolors.to_rgb(color_map[ticker]), 0.7)}', # area color
-            name=ticker,
-            hoverinfo='x+y+name'
+    periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
+    for name, freq in periods.items():
+        ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
+        vol = df_filtered.resample(freq).std() * np.sqrt(252)
+        ret = ret.loc[ret.index <= df_filtered.index.max()]
+        vol = vol.loc[vol.index <= df_filtered.index.max()]
+    
+        # Limit Monthly and Quarterly to last 12 months if selected
+        if name in ["Monthly", "Quarterly"] and view_option == "Last 1Y":
+            cutoff = df_filtered.index.max() - pd.DateOffset(years=1)
+            ret = ret.loc[ret.index >= cutoff]
+            vol = vol.loc[vol.index >= cutoff]
+    
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_ret = go.Figure()
+            fig_ret.add_trace(go.Bar(x=ret.index, y=ret["Strat_Ret"], name="Strategy", marker_color="blue"))
+            fig_ret.add_trace(go.Bar(x=ret.index, y=ret["Bench_Ret"], name="Benchmark (VOO)", marker_color="gray"))
+            fig_ret.update_layout(
+                title=f"{name} Returns: Strategy vs Benchmark",
+                xaxis_title=name,
+                yaxis_title="Return",
+                barmode='group',
+                yaxis_tickformat=".1%",
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_ret, use_container_width=True)
+        with col2:
+            fig_vol = go.Figure()
+            fig_vol.add_trace(go.Bar(x=vol.index, y=vol["Strat_Ret"], name="Strategy", marker_color="blue"))
+            fig_vol.add_trace(go.Bar(x=vol.index, y=vol["Bench_Ret"], name="Benchmark (VOO)", marker_color="gray"))
+            fig_vol.update_layout(
+                title=f"{name} Volatility: Strategy vs Benchmark",
+                xaxis_title=name,
+                yaxis_title="Volatility",
+                barmode='group',
+                yaxis_tickformat=".1%",
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_vol, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # --- Weights Distribution & Descriptions ---
+    st.subheader("📊 Portfolio Weights Distribution")
+    col_left, col_right = st.columns([2, 1])
+    
+    with col_left:
+        filtered_df = filtered_weights[filtered_weights['Rescaled_Weights'] > 0].copy()
+        unique_tickers = sorted(filtered_df['Ticker'].unique())
+        num_tickers = len(unique_tickers)
+        colors = cm.tab20(np.linspace(0, 1, num_tickers))
+        colors_hex = [plt.cm.colors.to_hex(c) for c in colors]
+        color_map = dict(zip(unique_tickers, colors_hex))
+        color_map['VOO'] = '#BBBBBB'
+    
+        date_groups = filtered_df.groupby(filtered_df.index)
+        data, dates = [], []
+        for date, group in date_groups:
+            weights = dict(zip(group['Ticker'], group['Rescaled_Weights']))
+            row = [weights.get(ticker, 0) for ticker in unique_tickers]
+            data.append(row)
+            dates.append(date)
+    
+        weights_matrix = pd.DataFrame(data, columns=unique_tickers, index=dates)
+    
+        # --- Dynamic Weights ---
+        fig_w = go.Figure()
+        prev = np.zeros(len(weights_matrix))
+        
+        for i, ticker in enumerate(unique_tickers):
+            fig_w.add_trace(go.Scatter(
+                x=weights_matrix.index,
+                y=prev + weights_matrix[ticker],
+                mode='lines',
+                line=dict(width=0, color='rgba(0,0,0,0)'),  # fully transparent line
+                fill='tozeroy' if i == 0 else 'tonexty',   # first trace from zero, rest stack
+                fillcolor=f'rgba{(*mcolors.to_rgb(color_map[ticker]), 0.7)}', # area color
+                name=ticker,
+                hoverinfo='x+y+name'
+            ))
+            prev += weights_matrix[ticker].values
+        
+        fig_w.update_layout(
+            title="Portfolio Weights Over Time",
+            xaxis_title="Date",
+            yaxis_title="Weight",
+            yaxis=dict(tickformat=".0%"),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=True
+        )
+        
+        st.plotly_chart(fig_w, use_container_width=True)
+    
+    
+        # --- Pie Chart for Average Weights ---
+        avg_weights = weights_matrix.mean()
+        fig_pie = go.Figure(go.Pie(
+            labels=avg_weights.index,
+            values=avg_weights.values,
+            marker_colors=[
+                f"rgba({int(r*255)},{int(g*255)},{int(b*255)},{0.8})"
+                for t in avg_weights.index
+                for r, g, b in [mcolors.to_rgb(color_map[t])]
+            ],
+            hole=0.3
         ))
-        prev += weights_matrix[ticker].values
+        fig_pie.update_layout(
+            title="Average Portfolio Weights",
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)"
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
     
-    fig_w.update_layout(
-        title="Portfolio Weights Over Time",
-        xaxis_title="Date",
-        yaxis_title="Weight",
-        yaxis=dict(tickformat=".0%"),
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        showlegend=True
-    )
+    with col_right:
+        st.subheader("Ticker Descriptions")
+        for ticker, desc in ticker_descriptions.items():
+            st.markdown(f"**{ticker}**: {desc}")
     
-    st.plotly_chart(fig_w, use_container_width=True)
-
-
-    # --- Pie Chart for Average Weights ---
-    avg_weights = weights_matrix.mean()
-    fig_pie = go.Figure(go.Pie(
-        labels=avg_weights.index,
-        values=avg_weights.values,
-        marker_colors=[
-            f"rgba({int(r*255)},{int(g*255)},{int(b*255)},{0.8})"
-            for t in avg_weights.index
-            for r, g, b in [mcolors.to_rgb(color_map[t])]
-        ],
-        hole=0.3
-    ))
-    fig_pie.update_layout(
-        title="Average Portfolio Weights",
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
-    st.plotly_chart(fig_pie, use_container_width=True)
-
-with col_right:
-    st.subheader("Ticker Descriptions")
-    for ticker, desc in ticker_descriptions.items():
-        st.markdown(f"**{ticker}**: {desc}")
-
-st.markdown("---")
-
-# --- Final Note ---
-st.caption("AdaptiveShield-VT18 Dashboard © Quest Quantum Solutions")
+    st.markdown("---")
+    
+    # --- Final Note ---
+    st.caption("AdaptiveShield-VT18 Dashboard © Quest Quantum Solutions")
+    
