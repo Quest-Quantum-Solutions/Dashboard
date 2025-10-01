@@ -7,11 +7,10 @@ import matplotlib.cm as cm
 import base64
 import matplotlib.colors as mcolors
 
-
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
-# --- Set Background Image --
+# --- Set Background Image ---
 def set_png_as_page_bg(png_file):
     with open(png_file, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
@@ -33,16 +32,10 @@ def set_png_as_page_bg(png_file):
         unsafe_allow_html=True
     )
 
-    
-    
-
-    
-    
-
 set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
-df = pd.read_pickle("Str_Bench_RET.pkl")  # Replace with your file
+df = pd.read_pickle("Str_Bench_RET.pkl")
 df.index = pd.to_datetime(df["Date"])
 df = df[["Strat_Ret", "Bench_Ret"]]
 
@@ -79,7 +72,7 @@ df_cum = df_cum / df_cum.iloc[0]
 # --- Header ---
 st.title("📊 AdaptiveShield-VT18 Performance Dashboard")
 
-# --- Highlights and period buttons ---
+# --- Highlights ---
 col_h, col_r = st.columns([3, 1])
 with col_h:
     st.markdown("""
@@ -89,43 +82,60 @@ with col_h:
     - 📈 Equity-Enhanced (VOO-based)
     """)
 
-with col_r:
-    period = st.radio(
-        "",  
-        ["1D", "1M", "3M", "6M", "1Y", "5Y", "All"],
-        index=0,
-        horizontal=True
-    )
+# --- Daily Relative Return Bar ---
+latest_date = df.index.max()
+daily_return = df.loc[latest_date, "Strat_Ret"]
+arrow = "▲" if daily_return >= 0 else "▼"
+color = "green" if daily_return >= 0 else "red"
+st.markdown(
+    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
+    f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
+    unsafe_allow_html=True
+)
 
-    # Map period to start date for relative return
-    latest_date = df.index.max()
-    if period == "1D":
-        start = latest_date - pd.Timedelta(days=1)
-    elif period == "1M":
-        start = latest_date - pd.DateOffset(months=1)
-    elif period == "3M":
-        start = latest_date - pd.DateOffset(months=3)
-    elif period == "6M":
-        start = latest_date - pd.DateOffset(months=6)
-    elif period == "1Y":
-        start = latest_date - pd.DateOffset(years=1)
-    elif period == "5Y":
-        start = latest_date - pd.DateOffset(years=5)
-    elif period == "All":
-        start = df.index.min()
+# --- Period Buttons (above slider) ---
+st.markdown("### Select Period")
+period_button = st.radio(
+    "",
+    ["1M", "3M", "6M", "1Y", "5Y", "All"],
+    index=0,
+    horizontal=True
+)
 
-    df_period = df.loc[start:latest_date]
-    if not df_period.empty:
-        rel_return = (1 + df_period["Strat_Ret"]).prod() - 1
-        arrow = "▲" if rel_return >= 0 else "▼"
-        color = "green" if rel_return >= 0 else "red"
-        st.markdown(
-            f"<h2 style='text-align:right; color:{color};'>{arrow} {rel_return:.2%}</h2>"
-            f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
-            unsafe_allow_html=True
-        )
+# --- Map period buttons to slider dates ---
+latest_date = df.index.max()
+if period_button == "1M":
+    slider_start = latest_date - pd.DateOffset(months=1)
+elif period_button == "3M":
+    slider_start = latest_date - pd.DateOffset(months=3)
+elif period_button == "6M":
+    slider_start = latest_date - pd.DateOffset(months=6)
+elif period_button == "1Y":
+    slider_start = latest_date - pd.DateOffset(years=1)
+elif period_button == "5Y":
+    slider_start = latest_date - pd.DateOffset(years=5)
+elif period_button == "All":
+    slider_start = df.index.min()
 
-st.markdown("---")
+    
+    
+    
+# PART 2
+# --- Date slider (controlled by period buttons) ---
+start_date, end_date = st.slider(
+    "📅 Select Date Range",
+    min_value=df_cum.index.min().to_pydatetime(),
+    max_value=df_cum.index.max().to_pydatetime(),
+    value=(slider_start.to_pydatetime(), latest_date.to_pydatetime())
+)
+
+if (end_date - start_date).days < 30:
+    st.warning("Please select at least a 1-month window.")
+    st.stop()
+
+# --- Filtered data ---
+df_filtered = df.loc[start_date:end_date]
+filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
 
 # --- Performance Metrics Function ---
 def compute_metrics(series, benchmark):
@@ -142,11 +152,11 @@ def compute_metrics(series, benchmark):
     cummax = cumulative.cummax()
     drawdowns = cumulative / cummax - 1
     max_drawdown = drawdowns.min()
-    end_date = drawdowns.idxmin()
-    start_date = cumulative.loc[:end_date].idxmax()
-    post_dd = cumulative.loc[end_date:]
-    recovery_date = post_dd[post_dd >= cumulative[start_date]].first_valid_index()
-    recovery_days = (recovery_date - end_date).days if recovery_date is not None else np.nan
+    end_date_dd = drawdowns.idxmin()
+    start_date_dd = cumulative.loc[:end_date_dd].idxmax()
+    post_dd = cumulative.loc[end_date_dd:]
+    recovery_date = post_dd[post_dd >= cumulative[start_date_dd]].first_valid_index()
+    recovery_days = (recovery_date - end_date_dd).days if recovery_date is not None else np.nan
 
     monthly = series.resample('M').sum()
     benchmark_monthly = benchmark.resample('M').sum()
@@ -167,28 +177,12 @@ def compute_metrics(series, benchmark):
         "Volatility (Annualized)": f"{vol:.2%}",
         "Sharpe Ratio (CAGR / Vol)": f"{sharpe:.2f}",
         "Max Drawdown": f"{max_drawdown:.2%}",
-        "Max Drawdown Period": f"{start_date.date()} → {end_date.date()}",
+        "Max Drawdown Period": f"{start_date_dd.date()} → {end_date_dd.date()}",
         "Drawdown Recovery Time (Days)": f"{int(recovery_days) if not np.isnan(recovery_days) else 'Not Recovered'}",
         "Monthly Hit Ratio vs Benchmark": f"{monthly_hit:.1%}",
         "Quarterly Hit Ratio vs Benchmark": f"{quarterly_hit:.1%}",
         "Annual Hit Ratio vs Benchmark": f"{annual_hit:.1%}"
     }
-
-# --- Date slider ---
-start_date, end_date = st.slider(
-    "📅 Select Date Range",
-    min_value=df_cum.index.min().to_pydatetime(),
-    max_value=df_cum.index.max().to_pydatetime(),
-    value=(df_cum.index.min().to_pydatetime(), df_cum.index.max().to_pydatetime())
-)
-
-if (end_date - start_date).days < 30:
-    st.warning("Please select at least a 1-month window.")
-    st.stop()
-
-# --- Filtered data ---
-df_filtered = df.loc[start_date:end_date]
-filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
 
 # --- Metrics ---
 strategy_metrics = compute_metrics(df_filtered["Strat_Ret"], df_filtered["Bench_Ret"])
@@ -268,11 +262,9 @@ with col2:
 st.markdown("---")
 
 
-#show_more = st.button("📈 Click for More Performance")
-#show_more = st.checkbox("📈 Click for More Performance")
+# PART 3
 
-#if show_more:
-    # --- Monthly, Quarterly, Annual Returns & Volatility ---
+# --- More Performance: Monthly/Quarterly/Annual ---
 with st.expander("📈 Click for More Performance"):
     view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
@@ -355,9 +347,9 @@ with st.expander("📈 Click for More Performance"):
                 x=weights_matrix.index,
                 y=prev + weights_matrix[ticker],
                 mode='lines',
-                line=dict(width=0, color='rgba(0,0,0,0)'),  # fully transparent line
-                fill='tozeroy' if i == 0 else 'tonexty',   # first trace from zero, rest stack
-                fillcolor=f'rgba{(*mcolors.to_rgb(color_map[ticker]), 0.7)}', # area color
+                line=dict(width=0, color='rgba(0,0,0,0)'),
+                fill='tozeroy' if i == 0 else 'tonexty',
+                fillcolor=f'rgba{(*mcolors.to_rgb(color_map[ticker]), 0.7)}',
                 name=ticker,
                 hoverinfo='x+y+name'
             ))
@@ -375,7 +367,6 @@ with st.expander("📈 Click for More Performance"):
         )
         
         st.plotly_chart(fig_w, use_container_width=True)
-    
     
         # --- Pie Chart for Average Weights ---
         avg_weights = weights_matrix.mean()
@@ -406,4 +397,3 @@ with st.expander("📈 Click for More Performance"):
     
     # --- Final Note ---
     st.caption("AdaptiveShield-VT18 Dashboard © Quest Quantum Solutions")
-    
