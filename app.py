@@ -104,7 +104,7 @@ with col_h:
 #)
 
 # --- 1-Day Return (Last Observation, consistent with 1D calculation) ---
-daily_return_1d = (1 + df["Strat_Ret"]).iloc[-1] / (1 + df["Strat_Ret"]).iloc[-2] - 1
+daily_return_1d = df["Strat_Ret"].iloc[-1]
 arrow = "▲" if daily_return_1d >= 0 else "▼"
 color = "green" if daily_return_1d >= 0 else "red"
 st.markdown(
@@ -112,6 +112,7 @@ st.markdown(
     f"<p style='text-align:right; color:gray;'>Latest update: {df.index[-1].date()}</p>",
     unsafe_allow_html=True
 )
+
 
 
 
