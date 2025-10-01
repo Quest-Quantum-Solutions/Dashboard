@@ -98,7 +98,7 @@ st.markdown("### Select Period")
 period_button = st.radio(
     "",
     ["1M", "3M", "6M", "1Y", "5Y", "All"],
-    index=0,
+    index=4,
     horizontal=True
 )
 
