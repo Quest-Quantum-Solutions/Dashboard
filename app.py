@@ -93,15 +93,26 @@ with col_h:
 #    unsafe_allow_html=True
 #)
 
-# --- 1-Day Return (Last Observation) ---
-daily_return = df["Strat_Ret"].iloc[-1]  # last daily return
-arrow = "▲" if daily_return >= 0 else "▼"
-color = "green" if daily_return >= 0 else "red"
+## --- 1-Day Return (Last Observation) ---
+#daily_return = df["Strat_Ret"].iloc[-1]  # last daily return
+#arrow = "▲" if daily_return >= 0 else "▼"
+#color = "green" if daily_return >= 0 else "red"
+#st.markdown(
+#    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
+#    f"<p style='text-align:right; color:gray;'>Latest update: {df.index[-1].date()}</p>",
+#    unsafe_allow_html=True
+#)
+
+# --- 1-Day Return (Last Observation, consistent with 1D calculation) ---
+daily_return_1d = (1 + df["Strat_Ret"]).iloc[-1] / (1 + df["Strat_Ret"]).iloc[-2] - 1
+arrow = "▲" if daily_return_1d >= 0 else "▼"
+color = "green" if daily_return_1d >= 0 else "red"
 st.markdown(
-    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
+    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return_1d:.2%}</h2>"
     f"<p style='text-align:right; color:gray;'>Latest update: {df.index[-1].date()}</p>",
     unsafe_allow_html=True
 )
+
 
 
 # --- Period Buttons (above slider) ---
