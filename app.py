@@ -82,37 +82,16 @@ with col_h:
     - 📈 Equity-Enhanced (VOO-based)
     """)
 
-## --- Daily Relative Return Bar ---
-#latest_date = df.index.max()
-#daily_return = df.loc[latest_date, "Strat_Ret"]
-#arrow = "▲" if daily_return >= 0 else "▼"
-#color = "green" if daily_return >= 0 else "red"
-#st.markdown(
-#    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
-#    f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
-#    unsafe_allow_html=True
-#)
-
-## --- 1-Day Return (Last Observation) ---
-#daily_return = df["Strat_Ret"].iloc[-1]  # last daily return
-#arrow = "▲" if daily_return >= 0 else "▼"
-#color = "green" if daily_return >= 0 else "red"
-#st.markdown(
-#    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
-#    f"<p style='text-align:right; color:gray;'>Latest update: {df.index[-1].date()}</p>",
-#    unsafe_allow_html=True
-#)
-
-# --- 1-Day Return (Last Observation, consistent with 1D calculation) ---
-daily_return_1d = df["Strat_Ret"].iloc[-1]
-arrow = "▲" if daily_return_1d >= 0 else "▼"
-color = "green" if daily_return_1d >= 0 else "red"
+# --- Daily Relative Return Bar ---
+latest_date = df.index.max()
+daily_return = df.loc[latest_date, "Strat_Ret"]
+arrow = "▲" if daily_return >= 0 else "▼"
+color = "green" if daily_return >= 0 else "red"
 st.markdown(
-    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return_1d:.2%}</h2>"
-    f"<p style='text-align:right; color:gray;'>Latest update: {df.index[-1].date()}</p>",
+    f"<h2 style='text-align:right; color:{color};'>{arrow} {daily_return:.2%}</h2>"
+    f"<p style='text-align:right; color:gray;'>Latest update: {latest_date.date()}</p>",
     unsafe_allow_html=True
 )
-
 
 
 
