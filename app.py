@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import base64
 import matplotlib.colors as mcolors
-
 import os
 from scipy.stats import ttest_ind, levene
 from matplotlib.ticker import PercentFormatter
