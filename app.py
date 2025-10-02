@@ -491,7 +491,7 @@ with st.expander("📈 View Detailed Performance"):
 # PART 4
 
 # --- Statistical Test Section as an expander ---
-with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=False):
+with st.expander("📊 View Statistical Comparison: Backtest vs Real-Time", expanded=False):
 
     # Load pickle
     full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
