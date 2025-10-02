@@ -562,8 +562,8 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     fig_stat.update_layout(
         title="Backtest vs Real-Time Metrics",
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0.5)",
-        plot_bgcolor="rgba(0,0,0,0.5)",
+        paper_bgcolor="rgba(0,0,0,0.6)",
+        plot_bgcolor="rgba(0,0,0,0.6)",
         xaxis=dict(title="", color='white'),
         yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
         barmode='group',
@@ -593,8 +593,3 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     
     
     
-    
-    paper_bgcolor="rgba(0,0,0,0.3)",  # transparent black
-    plot_bgcolor="rgba(0,0,0,0.3)",   # transparent black
-    xaxis=dict(title="", color='white', gridcolor='rgba(255,255,255,0.1)'),
-    yaxis=dict(title="Annualized Value", tickformat=".0%", color='white', gridcolor='rgba(255,255,255,0.1)'),
