@@ -559,13 +559,27 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     ))
 
     # Layout matching other charts
+    #fig_stat.update_layout(
+    #    title="Backtest vs Real-Time Metrics",
+    #    template="plotly_dark",
+    #    paper_bgcolor="rgba(0,0,0,0.3)",
+    #    plot_bgcolor="rgba(0,0,0,0.3)",
+    #    xaxis=dict(title="", color='white'),
+    #    yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
+    #    barmode='group',
+    #    legend=dict(font=dict(color='white')),
+    #    width=600,
+    #    height=350,
+    #    margin=dict(l=40, r=40, t=50, b=40)
+    #)
+    
     fig_stat.update_layout(
         title="Backtest vs Real-Time Metrics",
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0.3)",
-        plot_bgcolor="rgba(0,0,0,0.3)",
-        xaxis=dict(title="", color='white'),
-        yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
+        template=None,
+        paper_bgcolor="rgba(0,0,0,0.3)",  # transparent black
+        plot_bgcolor="rgba(0,0,0,0.3)",   # transparent black
+        xaxis=dict(title="", color='white', gridcolor='rgba(255,255,255,0.1)'),
+        yaxis=dict(title="Annualized Value", tickformat=".0%", color='white', gridcolor='rgba(255,255,255,0.1)'),
         barmode='group',
         legend=dict(font=dict(color='white')),
         width=600,
@@ -574,3 +588,13 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     )
 
     st.plotly_chart(fig_stat, use_container_width=True)
+    
+    
+    
+    
+    
+    
+    paper_bgcolor="rgba(0,0,0,0.3)",  # transparent black
+    plot_bgcolor="rgba(0,0,0,0.3)",   # transparent black
+    xaxis=dict(title="", color='white', gridcolor='rgba(255,255,255,0.1)'),
+    yaxis=dict(title="Annualized Value", tickformat=".0%", color='white', gridcolor='rgba(255,255,255,0.1)'),
