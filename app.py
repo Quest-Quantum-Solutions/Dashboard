@@ -517,8 +517,8 @@ with st.expander("📊 Compare Backtest vs Real-Time", expanded=False):
 
     def interpret_p(p):
         return "Significant difference" if p < 0.05 else "No significant difference"
-
-    # Table without index
+    
+    # Table without row numbers
     table_data = pd.DataFrame({
         "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
         "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
@@ -526,7 +526,9 @@ with st.expander("📊 Compare Backtest vs Real-Time", expanded=False):
         "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}"],
         "Interpretation": [interpret_p(p_mean), interpret_p(p_vol)]
     })
-    st.table(table_data.style.hide(axis="index"))
+    
+    table_data.set_index("Metric", inplace=True)  # Use Metric as index
+    st.table(table_data)
 
     # --- Plot with Plotly ---
     metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
