@@ -7,6 +7,11 @@ import matplotlib.cm as cm
 import base64
 import matplotlib.colors as mcolors
 
+import os
+from scipy.stats import ttest_ind, levene
+from matplotlib.ticker import PercentFormatter
+
+
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
@@ -482,3 +487,72 @@ with st.expander("📈 Click for More Performance"):
     
     # --- Final Note ---
     st.caption("AdaptiveShield-VT18 Dashboard © Quest Quantum Solutions")
+
+    
+# PART 4
+
+# --- Statistical Test Section ---
+st.subheader("📊 Compare Backtest vs Real-Time")
+
+# Load pickle
+full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
+
+# Filter overlapping dates
+df_stat = full_bt_rt.dropna(subset=['Full_Backtest', 'Real_Time'])
+
+# Compute statistics
+bt = df_stat['Full_Backtest']
+rt = df_stat['Real_Time']
+
+t_stat, p_mean = ttest_ind(bt, rt, equal_var=False)
+lev_stat, p_vol = levene(bt, rt)
+
+def annualized_metrics(daily_returns):
+    n_days = len(daily_returns)
+    total_return = (1 + daily_returns).prod() - 1
+    cagr = (1 + total_return)**(252 / n_days) - 1 if n_days > 0 else np.nan
+    vol = daily_returns.std() * np.sqrt(252) if n_days > 1 else np.nan
+    return cagr, vol
+
+cagr_bt, vol_bt = annualized_metrics(bt)
+cagr_rt, vol_rt = annualized_metrics(rt)
+
+def interpret_p(p):
+    return "Significant difference" if p < 0.05 else "No significant difference"
+
+# Table
+table_data = pd.DataFrame({
+    "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
+    "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
+    "Real-Time": [f"{cagr_rt:.2%}", f"{vol_rt:.2%}"],
+    "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}"],
+    "Interpretation": [interpret_p(p_mean), interpret_p(p_vol)]
+})
+st.table(table_data)
+
+# Plot
+metrics = ['Annualized Return (CAGR)', 'Annualized Volatility']
+means_bt = [cagr_bt, vol_bt]
+means_rt = [cagr_rt, vol_rt]
+
+# Confidence intervals
+ci_multiplier = 1.96
+se_bt = [bt.std()/np.sqrt(len(bt))*np.sqrt(252)]*2
+se_rt = [rt.std()/np.sqrt(len(rt))*np.sqrt(252)]*2
+ci_bt = [se*ci_multiplier for se in se_bt]
+ci_rt = [se*ci_multiplier for se in se_rt]
+
+x = np.arange(len(metrics))
+width = 0.35
+
+fig, ax = plt.subplots(figsize=(6,3.5))
+ax.bar(x - width/2, means_bt, width, yerr=ci_bt, capsize=5, label='Backtest', color='blue')
+ax.bar(x + width/2, means_rt, width, yerr=ci_rt, capsize=5, label='Real-Time', color='red')
+ax.set_ylabel('Annualized Value', fontsize=9)
+ax.set_xticks(x)
+ax.set_xticklabels(metrics, fontsize=8)
+ax.yaxis.set_major_formatter(PercentFormatter(1.0))
+ax.tick_params(axis='y', labelsize=8)
+ax.legend(fontsize=9)
+ax.grid(axis='y', linestyle='--', alpha=0.7)
+st.pyplot(fig)
