@@ -327,6 +327,78 @@ with st.expander("📈 Click for More Performance"):
     
     st.markdown("---")
     
+    
+    
+    
+    ############# Underwater plot
+    
+    # --- Underwater (Drawdown) Chart ---
+    st.subheader("📉 Underwater Drawdown (Strategy vs Benchmark)")
+    
+    # Compute cumulative returns
+    cumulative = (1 + df_filtered).cumprod()
+    
+    # Compute drawdowns
+    drawdown = cumulative / cumulative.cummax() - 1
+    
+    # Split strategy drawdown pre- and post-inception
+    drawdown_backtest = drawdown[drawdown.index < inception_date]
+    drawdown_realtime = drawdown[drawdown.index >= inception_date]
+    
+    # Plot underwater chart
+    fig_dd = go.Figure()
+    
+    # Strategy (backtest - transparent blue)
+    fig_dd.add_trace(go.Scatter(
+        x=drawdown_backtest.index,
+        y=drawdown_backtest["Strat_Ret"],
+        mode='lines',
+        name="Strategy (Backtest)",
+        line=dict(color="rgba(0, 0, 255, 0.5)"),
+        fill='tozeroy'
+    ))
+    
+    # Strategy (real-time - transparent red)
+    fig_dd.add_trace(go.Scatter(
+        x=drawdown_realtime.index,
+        y=drawdown_realtime["Strat_Ret"],
+        mode='lines',
+        name="Strategy (Real-Time)",
+        line=dict(color="rgba(255, 0, 0, 0.5)"),
+        fill='tozeroy'
+    ))
+    
+    # Benchmark (transparent light gray)
+    fig_dd.add_trace(go.Scatter(
+        x=drawdown.index,
+        y=drawdown["Bench_Ret"],
+        mode='lines',
+        name="Benchmark (VOO)",
+        line=dict(color="rgba(200, 200, 200, 0.5)"),
+        fill='tozeroy'
+    ))
+    
+    fig_dd.update_layout(
+        title="Underwater Drawdown Over Time",
+        xaxis_title="Date",
+        yaxis_title="Drawdown",
+        yaxis_tickformat=".0%",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    
+    st.plotly_chart(fig_dd, use_container_width=True)
+        
+    
+    
+    ##############
+    
+    
+    
+    
+    
+    
     # --- Weights Distribution & Descriptions ---
     st.subheader("📊 Portfolio Weights Distribution")
     col_left, col_right = st.columns([2, 1])
