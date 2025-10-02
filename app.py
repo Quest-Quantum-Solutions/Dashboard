@@ -540,7 +540,7 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
 #
     #render_black_table(table_data)
     
-    def render_black_table(df, alpha=0.6):
+    def render_black_table(df, alpha=0.4):
         """
         Renders a Streamlit table with black background and adjustable transparency.
         - df: pandas DataFrame
