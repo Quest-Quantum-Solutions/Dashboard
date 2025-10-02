@@ -518,7 +518,7 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     def interpret_p(p):
         return "Significant difference" if p < 0.05 else "No significant difference"
     
-    # Table without row numbers
+    # --- Table ---
     table_data = pd.DataFrame({
         "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
         "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
@@ -528,9 +528,19 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     })
     
     table_data.set_index("Metric", inplace=True)  # Use Metric as index
-    st.table(table_data)
 
-    # --- Plot with Plotly ---
+    # --- Render table with black background ---
+    def render_black_table(df):
+        html = df.to_html(escape=False)
+        html = html.replace('<table border="1" class="dataframe">', 
+                            '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
+        html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
+        html = html.replace('<td>', '<td style="background-color:black;color:white;">')
+        st.markdown(html, unsafe_allow_html=True)
+
+    render_black_table(table_data)
+
+    # --- Plot with Plotly (aligned with other charts) ---
     metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
     fig_stat = go.Figure()
 
@@ -557,7 +567,10 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
         xaxis=dict(title="", color='white'),
         yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
         barmode='group',
-        legend=dict(font=dict(color='white'))
+        legend=dict(font=dict(color='white')),
+        width=600,
+        height=350,
+        margin=dict(l=40, r=40, t=50, b=40)
     )
 
     st.plotly_chart(fig_stat, use_container_width=True)

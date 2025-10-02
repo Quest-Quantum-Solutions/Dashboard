@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import base64
 import matplotlib.colors as mcolors
+import os
+from scipy.stats import ttest_ind, levene
+from matplotlib.ticker import PercentFormatter
+
 
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
@@ -219,7 +223,7 @@ def render_black_table(df):
     st.markdown(html, unsafe_allow_html=True)
 
 render_black_table(short_df)
-with st.expander("🔎 Click for More Stats"):
+with st.expander("🔎 View Detailed Metrics"):
     render_black_table(extra_df)
 
 st.markdown("---")
@@ -277,7 +281,7 @@ st.markdown("---")
 # PART 3
 
 # --- More Performance: Monthly/Quarterly/Annual ---
-with st.expander("📈 Click for More Performance"):
+with st.expander("📈 View Detailed Performance"):
     view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
     periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
@@ -326,6 +330,79 @@ with st.expander("📈 Click for More Performance"):
             st.plotly_chart(fig_vol, use_container_width=True)
     
     st.markdown("---")
+    
+    
+    
+    
+    ############# Underwater plot
+    
+    # --- Underwater (Drawdown) Chart ---
+    st.subheader("📉 Underwater Drawdown (Strategy vs Benchmark)")
+    
+    # Compute cumulative returns
+    cumulative = (1 + df_filtered).cumprod()
+    
+    # Compute drawdowns
+    drawdown = cumulative / cumulative.cummax() - 1
+    
+    # Split strategy drawdown pre- and post-inception
+    drawdown_backtest = drawdown[drawdown.index < inception_date]
+    drawdown_realtime = drawdown[drawdown.index >= inception_date]
+    
+    # --- Plot underwater chart ---
+    fig_dd = go.Figure()
+    
+    # Benchmark (transparent light gray) — PLOT THIS FIRST
+    fig_dd.add_trace(go.Scatter(
+        x=drawdown.index,
+        y=drawdown["Bench_Ret"],
+        mode='lines',
+        name="Benchmark (VOO)",
+        line=dict(color="rgba(200, 200, 200, 0.5)"),
+        fill='tozeroy'
+    ))
+    
+    # Strategy (backtest - transparent blue)
+    fig_dd.add_trace(go.Scatter(
+        x=drawdown_backtest.index,
+        y=drawdown_backtest["Strat_Ret"],
+        mode='lines',
+        name="Strategy (Backtest)",
+        line=dict(color="rgba(0, 0, 255, 0.5)"),
+        fill='tozeroy'
+    ))
+    
+    # Strategy (real-time - transparent red)
+    fig_dd.add_trace(go.Scatter(
+        x=drawdown_realtime.index,
+        y=drawdown_realtime["Strat_Ret"],
+        mode='lines',
+        name="Strategy (Real-Time)",
+        line=dict(color="rgba(255, 0, 0, 0.5)"),
+        fill='tozeroy'
+    ))
+    
+    
+    fig_dd.update_layout(
+        title="Underwater Drawdown Over Time",
+        xaxis_title="Date",
+        yaxis_title="Drawdown",
+        yaxis_tickformat=".0%",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    
+    st.plotly_chart(fig_dd, use_container_width=True)
+        
+    
+    
+    ##############
+    
+    
+    
+    
+    
     
     # --- Weights Distribution & Descriptions ---
     st.subheader("📊 Portfolio Weights Distribution")
@@ -409,3 +486,78 @@ with st.expander("📈 Click for More Performance"):
     
     # --- Final Note ---
     st.caption("AdaptiveShield-VT18 Dashboard © Quest Quantum Solutions")
+
+    
+# PART 4
+
+# --- Statistical Test Section as an expander ---
+with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=False):
+
+    # Load pickle
+    full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
+
+    # Filter overlapping dates
+    df_stat = full_bt_rt.dropna(subset=['Full_Backtest', 'Real_Time'])
+    bt = df_stat['Full_Backtest']
+    rt = df_stat['Real_Time']
+
+    # Stats
+    t_stat, p_mean = ttest_ind(bt, rt, equal_var=False)
+    lev_stat, p_vol = levene(bt, rt)
+
+    def annualized_metrics(daily_returns):
+        n_days = len(daily_returns)
+        total_return = (1 + daily_returns).prod() - 1
+        cagr = (1 + total_return)**(252 / n_days) - 1 if n_days > 0 else np.nan
+        vol = daily_returns.std() * np.sqrt(252) if n_days > 1 else np.nan
+        return cagr, vol
+
+    cagr_bt, vol_bt = annualized_metrics(bt)
+    cagr_rt, vol_rt = annualized_metrics(rt)
+
+    def interpret_p(p):
+        return "Significant difference" if p < 0.05 else "No significant difference"
+    
+    # Table without row numbers
+    table_data = pd.DataFrame({
+        "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
+        "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
+        "Real-Time": [f"{cagr_rt:.2%}", f"{vol_rt:.2%}"],
+        "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}"],
+        "Interpretation": [interpret_p(p_mean), interpret_p(p_vol)]
+    })
+    
+    table_data.set_index("Metric", inplace=True)  # Use Metric as index
+    st.table(table_data)
+
+    # --- Plot with Plotly ---
+    metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
+    fig_stat = go.Figure()
+
+    # Semi-transparent bars
+    fig_stat.add_trace(go.Bar(
+        x=metrics,
+        y=[cagr_bt, vol_bt],
+        name="Backtest",
+        marker_color='rgba(0, 0, 255, 0.5)'
+    ))
+    fig_stat.add_trace(go.Bar(
+        x=metrics,
+        y=[cagr_rt, vol_rt],
+        name="Real-Time",
+        marker_color='rgba(255, 0, 0, 0.5)'
+    ))
+
+    # Layout matching other charts
+    fig_stat.update_layout(
+        title="Backtest vs Real-Time Metrics",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(title="", color='white'),
+        yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
+        barmode='group',
+        legend=dict(font=dict(color='white'))
+    )
+
+    st.plotly_chart(fig_stat, use_container_width=True)
