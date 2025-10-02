@@ -223,7 +223,7 @@ def render_black_table(df):
     st.markdown(html, unsafe_allow_html=True)
 
 render_black_table(short_df)
-with st.expander("🔎 Click for More Stats"):
+with st.expander("🔎 View Detailed Metrics"):
     render_black_table(extra_df)
 
 st.markdown("---")
@@ -281,7 +281,7 @@ st.markdown("---")
 # PART 3
 
 # --- More Performance: Monthly/Quarterly/Annual ---
-with st.expander("📈 Click for More Performance"):
+with st.expander("📈 View Detailed Performance"):
     view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
     periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
@@ -491,7 +491,7 @@ with st.expander("📈 Click for More Performance"):
 # PART 4
 
 # --- Statistical Test Section as an expander ---
-with st.expander("📊 Compare Backtest vs Real-Time", expanded=False):
+with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=False):
 
     # Load pickle
     full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
