@@ -530,15 +530,35 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
     table_data.set_index("Metric", inplace=True)  # Use Metric as index
 
     # --- Render table with black background ---
-    def render_black_table(df):
+    #def render_black_table(df):
+    #    html = df.to_html(escape=False)
+    #    html = html.replace('<table border="1" class="dataframe">', 
+    #                        '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
+    #    html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
+    #    html = html.replace('<td>', '<td style="background-color:black;color:white;">')
+    #    st.markdown(html, unsafe_allow_html=True)
+#
+    #render_black_table(table_data)
+    
+    def render_black_table(df, alpha=0.6):
+        """
+        Renders a Streamlit table with black background and adjustable transparency.
+        - df: pandas DataFrame
+        - alpha: float between 0 (fully transparent) and 1 (fully opaque)
+        """
         html = df.to_html(escape=False)
-        html = html.replace('<table border="1" class="dataframe">', 
-                            '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
-        html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
-        html = html.replace('<td>', '<td style="background-color:black;color:white;">')
+        bg_color = f'rgba(0,0,0,{alpha})'
+        th_color = f'rgba(17,17,17,{alpha})'
+        td_color = f'rgba(0,0,0,{alpha})'
+    
+        html = html.replace(
+            '<table border="1" class="dataframe">',
+            f'<table border="1" class="dataframe" style="background-color:{bg_color};color:white;border-color:white;">'
+        )
+        html = html.replace('<th>', f'<th style="background-color:{th_color};color:white;">')
+        html = html.replace('<td>', f'<td style="background-color:{td_color};color:white;">')
         st.markdown(html, unsafe_allow_html=True)
 
-    render_black_table(table_data)
 
     # --- Plot with Plotly (aligned with other charts) ---
     metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
@@ -573,20 +593,6 @@ with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=
         margin=dict(l=40, r=40, t=50, b=40)
     )
     
-    #fig_stat.update_layout(
-    #    title="Backtest vs Real-Time Metrics",
-    #    template=None,
-    #    paper_bgcolor="rgba(0,0,0,0.5)",  # transparent black
-    #    plot_bgcolor="rgba(0,0,0,0.5)",   # transparent black
-    #    xaxis=dict(title="", color='white', gridcolor='rgba(255,255,255,0.1)'),
-    #    yaxis=dict(title="Annualized Value", tickformat=".0%", color='white', gridcolor='rgba(255,255,255,0.1)'),
-    #    barmode='group',
-    #    legend=dict(font=dict(color='white')),
-    #    width=600,
-    #    height=350,
-    #    margin=dict(l=40, r=40, t=50, b=40)
-    #)
-
     st.plotly_chart(fig_stat, use_container_width=True)
     
     
