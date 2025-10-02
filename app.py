@@ -518,7 +518,7 @@ with st.expander("📊 Compare Backtest vs Real-Time", expanded=False):
     def interpret_p(p):
         return "Significant difference" if p < 0.05 else "No significant difference"
 
-    # Table
+    # Table without index
     table_data = pd.DataFrame({
         "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
         "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
@@ -526,40 +526,36 @@ with st.expander("📊 Compare Backtest vs Real-Time", expanded=False):
         "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}"],
         "Interpretation": [interpret_p(p_mean), interpret_p(p_vol)]
     })
-    st.table(table_data)
+    st.table(table_data.style.hide(axis="index"))
 
-    # Plot with transparency & smaller size
-    metrics = ['Annualized Return (CAGR)', 'Annualized Volatility']
-    means_bt = [cagr_bt, vol_bt]
-    means_rt = [cagr_rt, vol_rt]
+    # --- Plot with Plotly ---
+    metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
+    fig_stat = go.Figure()
 
-    # Confidence intervals
-    ci_multiplier = 1.96
-    se_bt = [bt.std()/np.sqrt(len(bt))*np.sqrt(252)]*2
-    se_rt = [rt.std()/np.sqrt(len(rt))*np.sqrt(252)]*2
-    ci_bt = [se*ci_multiplier for se in se_bt]
-    ci_rt = [se*ci_multiplier for se in se_rt]
+    # Semi-transparent bars
+    fig_stat.add_trace(go.Bar(
+        x=metrics,
+        y=[cagr_bt, vol_bt],
+        name="Backtest",
+        marker_color='rgba(0, 0, 255, 0.5)'
+    ))
+    fig_stat.add_trace(go.Bar(
+        x=metrics,
+        y=[cagr_rt, vol_rt],
+        name="Real-Time",
+        marker_color='rgba(255, 0, 0, 0.5)'
+    ))
 
-    x = np.arange(len(metrics))
-    width = 0.35
+    # Layout matching other charts
+    fig_stat.update_layout(
+        title="Backtest vs Real-Time Metrics",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(title="", color='white'),
+        yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
+        barmode='group',
+        legend=dict(font=dict(color='white'))
+    )
 
-    fig, ax = plt.subplots(figsize=(5,3))  # smaller figure
-    ax.bar(x - width/2, means_bt, width, yerr=ci_bt, capsize=5, 
-           label='Backtest', color='blue', alpha=0.5)  # semi-transparent
-    ax.bar(x + width/2, means_rt, width, yerr=ci_rt, capsize=5, 
-           label='Real-Time', color='red', alpha=0.5)  # semi-transparent
-
-    ax.set_ylabel('Annualized Value', fontsize=9)
-    ax.set_xticks(x)
-    ax.set_xticklabels(metrics, fontsize=8)
-    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.tick_params(axis='y', labelsize=8)
-    ax.legend(fontsize=9)
-    ax.grid(axis='y', linestyle='--', alpha=0.7)
-
-    # Transparent background
-    fig.patch.set_alpha(0.0)
-    ax.patch.set_alpha(0.0)
-
-    st.pyplot(fig)
-
+    st.plotly_chart(fig_stat, use_container_width=True)
