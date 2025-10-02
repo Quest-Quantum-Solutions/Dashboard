@@ -248,8 +248,8 @@ with col1:
         xaxis_title="Date",
         yaxis_title="Cumulative Return",
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        paper_bgcolor="rgba(0,0,0,0.6)",
+        plot_bgcolor="rgba(0,0,0,0.6)"
     )
     st.plotly_chart(fig_orig, use_container_width=True)
 
@@ -270,8 +270,8 @@ with col2:
         xaxis_title="Date",
         yaxis_title="Normalized Return",
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        paper_bgcolor="rgba(0,0,0,0.6)",
+        plot_bgcolor="rgba(0,0,0,0.6)"
     )
     st.plotly_chart(fig_norm, use_container_width=True)
 
@@ -309,8 +309,8 @@ with st.expander("📈 View Detailed Performance"):
                 barmode='group',
                 yaxis_tickformat=".1%",
                 template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
+                paper_bgcolor="rgba(0,0,0,0.6)",
+                plot_bgcolor="rgba(0,0,0,0.6)"
             )
             st.plotly_chart(fig_ret, use_container_width=True)
         with col2:
@@ -324,8 +324,8 @@ with st.expander("📈 View Detailed Performance"):
                 barmode='group',
                 yaxis_tickformat=".1%",
                 template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
+                paper_bgcolor="rgba(0,0,0,0.6)",
+                plot_bgcolor="rgba(0,0,0,0.6)"
             )
             st.plotly_chart(fig_vol, use_container_width=True)
     
@@ -389,8 +389,8 @@ with st.expander("📈 View Detailed Performance"):
         yaxis_title="Drawdown",
         yaxis_tickformat=".0%",
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        paper_bgcolor="rgba(0,0,0,0.6)",
+        plot_bgcolor="rgba(0,0,0,0.6)"
     )
     
     st.plotly_chart(fig_dd, use_container_width=True)
@@ -450,8 +450,8 @@ with st.expander("📈 View Detailed Performance"):
             yaxis_title="Weight",
             yaxis=dict(tickformat=".0%"),
             template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0.6)",
+            plot_bgcolor="rgba(0,0,0,0.6)",
             showlegend=True
         )
         
@@ -472,8 +472,8 @@ with st.expander("📈 View Detailed Performance"):
         fig_pie.update_layout(
             title="Average Portfolio Weights",
             template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
+            paper_bgcolor="rgba(0,0,0,0.6)",
+            plot_bgcolor="rgba(0,0,0,0.6)"
         )
         st.plotly_chart(fig_pie, use_container_width=True)
     
