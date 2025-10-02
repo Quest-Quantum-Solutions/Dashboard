@@ -187,6 +187,16 @@ def compute_metrics(series, benchmark):
     }
 
 # --- Metrics ---
+
+###############################
+
+# ✅ Temporary fix: replace NaNs in benchmark returns with 0
+df_filtered["Bench_Ret"] = df_filtered["Bench_Ret"].fillna(0)
+
+###############################
+
+
+
 strategy_metrics = compute_metrics(df_filtered["Strat_Ret"], df_filtered["Bench_Ret"])
 benchmark_metrics = compute_metrics(df_filtered["Bench_Ret"], df_filtered["Strat_Ret"])
 
