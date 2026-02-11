@@ -67,7 +67,7 @@ ticker_descriptions = {
 }
 
 # --- Inception date ---
-inception_date = pd.Timestamp("2025-05-15")
+inception_date = pd.Timestamp("2026-02-05")
 
 # --- Cumulative returns ---
 df_cum = (1 + df).cumprod()
