@@ -166,17 +166,17 @@ def compute_metrics(series, benchmark):
     recovery_date = post_dd[post_dd >= cumulative[start_date_dd]].first_valid_index()
     recovery_days = (recovery_date - end_date_dd).days if recovery_date is not None else np.nan
 
-    monthly = series.resample('M').sum()
-    benchmark_monthly = benchmark.resample('M').sum()
+    monthly = series.resample('ME').sum()
+    benchmark_monthly = benchmark.resample('ME').sum()
     benchmark_monthly = benchmark_monthly.reindex(monthly.index)
     monthly_hit = (monthly > benchmark_monthly).sum() / len(monthly) if len(monthly) > 0 else np.nan
 
-    quarterly = series.resample('Q').sum()
-    benchmark_quarterly = benchmark.resample('Q').sum()
+    quarterly = series.resample('QE').sum()
+    benchmark_quarterly = benchmark.resample('QE').sum()
     quarterly_hit = (quarterly > benchmark_quarterly).sum() / len(quarterly) if len(quarterly) > 0 else np.nan
 
-    annual = series.resample('Y').sum()
-    benchmark_annual = benchmark.resample('Y').sum()
+    annual = series.resample('YE').sum()
+    benchmark_annual = benchmark.resample('YE').sum()
     annual_hit = (annual > benchmark_annual).sum() / len(annual) if len(annual) > 0 else np.nan
 
     return {
