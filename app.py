@@ -250,19 +250,54 @@ realtime = filtered[filtered.index >= inception_date]
 col1, col2 = st.columns(2)
 with col1:
     fig_orig = go.Figure()
-    fig_orig.add_trace(go.Scatter(x=backtest.index, y=backtest["Strat_Ret"], mode="lines", name="Strategy (Backtest)", line=dict(color="blue")))
     
     ################### Added April 2nd, 2026. ######################
+    #fig_orig.add_trace(go.Scatter(x=backtest.index, y=backtest["Strat_Ret"], mode="lines", name="Strategy (Backtest)", line=dict(color="blue")))
     
-    # dashed full backtest after inception
-    full_bt_plot = full_bt_rt_cum.loc[inception_date:end_date]
+    # split strategy into pre/post inception
+    strat_pre = filtered[filtered.index < inception_date]
+    strat_post = filtered[filtered.index >= inception_date]
+    
+    # backtest (solid blue) BEFORE inception
     fig_orig.add_trace(go.Scatter(
-        x=full_bt_plot.index,
-        y=full_bt_plot["Full_Backtest"],
+        x=strat_pre.index,
+        y=strat_pre["Strat_Ret"],
         mode="lines",
-        name="Full Backtest (post-inception)",
+        name="Strategy (Backtest)",
+        line=dict(color="blue")
+    ))
+    
+    # same strategy but dashed AFTER inception
+    fig_orig.add_trace(go.Scatter(
+        x=strat_post.index,
+        y=strat_post["Strat_Ret"],
+        mode="lines",
+        name="Strategy (Backtest post-inception)",
         line=dict(color="blue", dash="dash")
     ))
+    
+    # real-time stays red
+    if not realtime.empty:
+        fig_orig.add_trace(go.Scatter(
+            x=realtime.index,
+            y=realtime["Strat_Ret"],
+            mode="lines",
+            name="Strategy (Real-Time)",
+            line=dict(color="red")
+    ))
+    
+    ###
+    
+    
+    ## dashed full backtest after inception
+    #full_bt_plot = full_bt_rt_cum.loc[inception_date:end_date]
+    #fig_orig.add_trace(go.Scatter(
+    #    x=full_bt_plot.index,
+    #    y=full_bt_plot["Full_Backtest"],
+    #    mode="lines",
+    #    name="Full Backtest (post-inception)",
+    #    line=dict(color="blue", dash="dash")
+    #))
     
     ##################################################################
     
