@@ -42,7 +42,7 @@ set_png_as_page_bg("QQS_background.png")
 df = pd.read_pickle("Str_Bench_RET.pkl")
 #df.index = pd.to_datetime(df["Date"])
 df["Date"] = pd.to_datetime(df["Date"])
-df = df.set_index("Date")
+#df = df.set_index("Date")
 df = df[["Strat_Ret", "Bench_Ret"]]
 
 backtest_STR_Weights = pd.read_pickle("backtest_STR_Weights.pkl")
