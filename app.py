@@ -286,7 +286,7 @@ st.markdown("---")
 with st.expander("📈 View Detailed Performance"):
     view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
-    periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
+    periods = {"Monthly": "ME", "Quarterly": "QE", "Annual": "YE"}
     for name, freq in periods.items():
         ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
         vol = df_filtered.resample(freq).std() * np.sqrt(252)
