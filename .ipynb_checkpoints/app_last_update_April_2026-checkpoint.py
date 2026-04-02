@@ -40,9 +40,7 @@ set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
 df = pd.read_pickle("Str_Bench_RET.pkl")
-#df.index = pd.to_datetime(df["Date"])
-df["Date"] = pd.to_datetime(df["Date"])
-df = df.set_index("Date")
+df.index = pd.to_datetime(df["Date"])
 df = df[["Strat_Ret", "Bench_Ret"]]
 
 backtest_STR_Weights = pd.read_pickle("backtest_STR_Weights.pkl")
@@ -69,7 +67,7 @@ ticker_descriptions = {
 }
 
 # --- Inception date ---
-inception_date = pd.Timestamp("2026-02-05")
+inception_date = pd.Timestamp("2025-05-15")
 
 # --- Cumulative returns ---
 df_cum = (1 + df).cumprod()
@@ -493,7 +491,7 @@ with st.expander("📈 View Detailed Performance"):
 # PART 4
 
 # --- Statistical Test Section as an expander ---
-with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False):
+with st.expander("📊 Statistical Comparison: Backtest vs Real-Time", expanded=False):
 
     # Load pickle
     full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")

@@ -40,9 +40,7 @@ set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
 df = pd.read_pickle("Str_Bench_RET.pkl")
-#df.index = pd.to_datetime(df["Date"])
-df["Date"] = pd.to_datetime(df["Date"])
-df = df.set_index("Date")
+df.index = pd.to_datetime(df["Date"])
 df = df[["Strat_Ret", "Bench_Ret"]]
 
 backtest_STR_Weights = pd.read_pickle("backtest_STR_Weights.pkl")
@@ -576,8 +574,5 @@ with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False)
     )
     
     st.plotly_chart(fig_stat, use_container_width=True)
-    
-    
-    
     
     
