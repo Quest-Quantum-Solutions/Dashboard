@@ -268,23 +268,16 @@ with col1:
     ))
     
     # same strategy but dashed AFTER inception
+    full_bt_post = full_bt_rt_cum.loc[inception_date:end_date]
     fig_orig.add_trace(go.Scatter(
         x=strat_post.index,
-        y=strat_post["Strat_Ret"],
+        #y=strat_post["Strat_Ret"],
+        y=full_bt_post["Full_Backtest"],
         mode="lines",
         name="Strategy (Backtest post-inception)",
         line=dict(color="blue", dash="dash")
     ))
     
-    # real-time stays red
-    if not realtime.empty:
-        fig_orig.add_trace(go.Scatter(
-            x=realtime.index,
-            y=realtime["Strat_Ret"],
-            mode="lines",
-            name="Strategy (Real-Time)",
-            line=dict(color="red")
-    ))
     
     ###
     
