@@ -48,6 +48,18 @@ df = df[["Strat_Ret", "Bench_Ret"]]
 backtest_STR_Weights = pd.read_pickle("backtest_STR_Weights.pkl")
 backtest_STR_Weights.index = pd.to_datetime(backtest_STR_Weights.index)
 
+################### Added April 2nd, 2026. ######################
+
+# --- Full backtest vs real-time ---
+full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
+full_bt_rt.index = pd.to_datetime(full_bt_rt.index)
+
+# cumulative version
+full_bt_rt_cum = (1 + full_bt_rt).cumprod()
+full_bt_rt_cum = full_bt_rt_cum / full_bt_rt_cum.iloc[0]
+
+##################################################################
+
 # --- Ticker Descriptions ---
 ticker_descriptions = {
     "VOO": "Vanguard S&P 500 ETF",
@@ -239,6 +251,21 @@ col1, col2 = st.columns(2)
 with col1:
     fig_orig = go.Figure()
     fig_orig.add_trace(go.Scatter(x=backtest.index, y=backtest["Strat_Ret"], mode="lines", name="Strategy (Backtest)", line=dict(color="blue")))
+    
+    ################### Added April 2nd, 2026. ######################
+    
+    # dashed full backtest after inception
+    full_bt_plot = full_bt_rt_cum.loc[inception_date:end_date]
+    fig_orig.add_trace(go.Scatter(
+        x=full_bt_plot.index,
+        y=full_bt_plot["Full_Backtest"],
+        mode="lines",
+        name="Full Backtest (post-inception)",
+        line=dict(color="blue", dash="dash")
+    ))
+    
+    ##################################################################
+    
     if not realtime.empty:
         fig_orig.add_trace(go.Scatter(x=realtime.index, y=realtime["Strat_Ret"], mode="lines", name="Strategy (Real-Time)", line=dict(color="red")))
     fig_orig.add_trace(go.Scatter(x=filtered.index, y=filtered["Bench_Ret"], mode="lines", name="Benchmark (VOO)", line=dict(color="lightgray")))
@@ -261,6 +288,23 @@ with col2:
     realtime_norm = filtered_norm[filtered_norm.index >= inception_date]
     fig_norm = go.Figure()
     fig_norm.add_trace(go.Scatter(x=backtest_norm.index, y=backtest_norm["Strat_Ret"], mode="lines", name="Strategy (Backtest)", line=dict(color="blue")))
+    
+    ################### Added April 2nd, 2026. ######################
+    
+    # normalized dashed full backtest after inception
+    full_bt_norm = full_bt_rt_cum.loc[start_date:end_date]
+    full_bt_norm = full_bt_norm / full_bt_norm.iloc[0]
+    
+    fig_norm.add_trace(go.Scatter(
+        x=full_bt_norm.index,
+        y=full_bt_norm["Full_Backtest"],
+        mode="lines",
+        name="Full Backtest (post-inception)",
+        line=dict(color="blue", dash="dash")
+    ))
+    
+    ##################################################################
+    
     if not realtime_norm.empty:
         fig_norm.add_trace(go.Scatter(x=realtime_norm.index, y=realtime_norm["Strat_Ret"], mode="lines", name="Strategy (Real-Time)", line=dict(color="red")))
     fig_norm.add_trace(go.Scatter(x=filtered_norm.index, y=filtered_norm["Bench_Ret"], mode="lines", name="Benchmark (VOO)", line=dict(color="lightgray")))

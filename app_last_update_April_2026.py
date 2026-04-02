@@ -40,7 +40,9 @@ set_png_as_page_bg("QQS_background.png")
 
 # --- Load Data ---
 df = pd.read_pickle("Str_Bench_RET.pkl")
-df.index = pd.to_datetime(df["Date"])
+#df.index = pd.to_datetime(df["Date"])
+df["Date"] = pd.to_datetime(df["Date"])
+df = df.set_index("Date")
 df = df[["Strat_Ret", "Bench_Ret"]]
 
 backtest_STR_Weights = pd.read_pickle("backtest_STR_Weights.pkl")
@@ -164,17 +166,17 @@ def compute_metrics(series, benchmark):
     recovery_date = post_dd[post_dd >= cumulative[start_date_dd]].first_valid_index()
     recovery_days = (recovery_date - end_date_dd).days if recovery_date is not None else np.nan
 
-    monthly = series.resample('M').sum()
-    benchmark_monthly = benchmark.resample('M').sum()
+    monthly = series.resample('ME').sum()
+    benchmark_monthly = benchmark.resample('ME').sum()
     benchmark_monthly = benchmark_monthly.reindex(monthly.index)
     monthly_hit = (monthly > benchmark_monthly).sum() / len(monthly) if len(monthly) > 0 else np.nan
 
-    quarterly = series.resample('Q').sum()
-    benchmark_quarterly = benchmark.resample('Q').sum()
+    quarterly = series.resample('QE').sum()
+    benchmark_quarterly = benchmark.resample('QE').sum()
     quarterly_hit = (quarterly > benchmark_quarterly).sum() / len(quarterly) if len(quarterly) > 0 else np.nan
 
-    annual = series.resample('Y').sum()
-    benchmark_annual = benchmark.resample('Y').sum()
+    annual = series.resample('YE').sum()
+    benchmark_annual = benchmark.resample('YE').sum()
     annual_hit = (annual > benchmark_annual).sum() / len(annual) if len(annual) > 0 else np.nan
 
     return {
@@ -284,7 +286,7 @@ st.markdown("---")
 with st.expander("📈 View Detailed Performance"):
     view_option = st.radio("Select View for Monthly & Quarterly Charts", ["Last 1Y", "Full Sample"], index=0, horizontal=True)
     
-    periods = {"Monthly": "M", "Quarterly": "Q", "Annual": "Y"}
+    periods = {"Monthly": "ME", "Quarterly": "QE", "Annual": "YE"}
     for name, freq in periods.items():
         ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
         vol = df_filtered.resample(freq).std() * np.sqrt(252)
@@ -574,5 +576,8 @@ with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False)
     )
     
     st.plotly_chart(fig_stat, use_container_width=True)
+    
+    
+    
     
     
