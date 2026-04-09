@@ -564,89 +564,157 @@ with st.expander("📈 View Detailed Performance"):
     
 # PART 4
 
-# --- Statistical Test Section as an expander ---
+## --- Statistical Test Section as an expander ---
+#with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False):
+#
+#    # Load pickle
+#    full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
+#
+#    # Filter overlapping dates
+#    df_stat = full_bt_rt.dropna(subset=['Full_Backtest', 'Real_Time'])
+#    bt = df_stat['Full_Backtest']
+#    rt = df_stat['Real_Time']
+#
+#    # Stats
+#    t_stat, p_mean = ttest_ind(bt, rt, equal_var=False)
+#    lev_stat, p_vol = levene(bt, rt)
+#
+#    def annualized_metrics(daily_returns):
+#        n_days = len(daily_returns)
+#        total_return = (1 + daily_returns).prod() - 1
+#        cagr = (1 + total_return)**(252 / n_days) - 1 if n_days > 0 else np.nan
+#        vol = daily_returns.std() * np.sqrt(252) if n_days > 1 else np.nan
+#        return cagr, vol
+#
+#    cagr_bt, vol_bt = annualized_metrics(bt)
+#    cagr_rt, vol_rt = annualized_metrics(rt)
+#
+#    def interpret_p(p):
+#        return "Significant difference" if p < 0.05 else "No significant difference"
+#    
+#    # --- Table ---
+#    table_data = pd.DataFrame({
+#        "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
+#        "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
+#        "Real-Time": [f"{cagr_rt:.2%}", f"{vol_rt:.2%}"],
+#        "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}"],
+#        "Interpretation": [interpret_p(p_mean), interpret_p(p_vol)]
+#    })
+#    
+#    table_data.set_index("Metric", inplace=True)  # Use Metric as index
+#
+#    # --- Render table with black background ---
+#    def render_black_table(df):
+#        html = df.to_html(escape=False)
+#        html = html.replace('<table border="1" class="dataframe">', 
+#                            '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
+#        html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
+#        html = html.replace('<td>', '<td style="background-color:black;color:white;">')
+#        st.markdown(html, unsafe_allow_html=True)
+#
+#    render_black_table(table_data)
+#
+#    # --- Plot with Plotly (aligned with other charts) ---
+#    metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
+#    fig_stat = go.Figure()
+#
+#    # Semi-transparent bars
+#    fig_stat.add_trace(go.Bar(
+#        x=metrics,
+#        y=[cagr_bt, vol_bt],
+#        name="Backtest",
+#        marker_color='rgba(0, 0, 255, 0.5)'
+#    ))
+#    fig_stat.add_trace(go.Bar(
+#        x=metrics,
+#        y=[cagr_rt, vol_rt],
+#        name="Real-Time",
+#        marker_color='rgba(255, 0, 0, 0.5)'
+#    ))
+#
+#    # Layout matching other charts
+#    fig_stat.update_layout(
+#        title="Backtest vs Real-Time Metrics",
+#        template="plotly_dark",
+#        paper_bgcolor="rgba(0,0,0,0.6)",
+#        plot_bgcolor="rgba(0,0,0,0.6)",
+#        xaxis=dict(title="", color='white'),
+#        yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
+#        barmode='group',
+#        legend=dict(font=dict(color='white')),
+#        width=600,
+#        height=350,
+#        margin=dict(l=40, r=40, t=50, b=40)
+#    )
+#    
+#    st.plotly_chart(fig_stat, use_container_width=True)
+
+# --- Statistical Test Section ---
 with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False):
 
-    # Load pickle
     full_bt_rt = pd.read_pickle("full_backtest_and_real_time.pkl")
 
-    # Filter overlapping dates
     df_stat = full_bt_rt.dropna(subset=['Full_Backtest', 'Real_Time'])
-    bt = df_stat['Full_Backtest']
-    rt = df_stat['Real_Time']
+    bt = df_stat['Full_Backtest'].astype(float)
+    rt = df_stat['Real_Time'].astype(float)
 
-    # Stats
+    # --- Statistical tests ON DAILY RETURNS ---
     t_stat, p_mean = ttest_ind(bt, rt, equal_var=False)
     lev_stat, p_vol = levene(bt, rt)
 
-    def annualized_metrics(daily_returns):
-        n_days = len(daily_returns)
-        total_return = (1 + daily_returns).prod() - 1
-        cagr = (1 + total_return)**(252 / n_days) - 1 if n_days > 0 else np.nan
-        vol = daily_returns.std() * np.sqrt(252) if n_days > 1 else np.nan
-        return cagr, vol
+    def annualized_metrics(x):
+        n = len(x)
+        total = (1 + x).prod() - 1
+        cagr = (1 + total) ** (252 / n) - 1 if n > 0 else np.nan
+        vol = x.std() * np.sqrt(252)
+        sharpe = cagr / vol if vol != 0 else np.nan
+        return cagr, vol, sharpe
 
-    cagr_bt, vol_bt = annualized_metrics(bt)
-    cagr_rt, vol_rt = annualized_metrics(rt)
+    cagr_bt, vol_bt, sharpe_bt = annualized_metrics(bt)
+    cagr_rt, vol_rt, sharpe_rt = annualized_metrics(rt)
 
-    def interpret_p(p):
+    def interp(p):
         return "Significant difference" if p < 0.05 else "No significant difference"
-    
-    # --- Table ---
-    table_data = pd.DataFrame({
-        "Metric": ["Annualized Return (CAGR)", "Annualized Volatility"],
-        "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}"],
-        "Real-Time": [f"{cagr_rt:.2%}", f"{vol_rt:.2%}"],
-        "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}"],
-        "Interpretation": [interpret_p(p_mean), interpret_p(p_vol)]
-    })
-    
-    table_data.set_index("Metric", inplace=True)  # Use Metric as index
 
-    # --- Render table with black background ---
-    def render_black_table(df):
-        html = df.to_html(escape=False)
-        html = html.replace('<table border="1" class="dataframe">', 
-                            '<table border="1" class="dataframe" style="background-color:black;color:white;border-color:white;">')
-        html = html.replace('<th>', '<th style="background-color:#111;color:white;">')
-        html = html.replace('<td>', '<td style="background-color:black;color:white;">')
-        st.markdown(html, unsafe_allow_html=True)
+    # --- TABLE ---
+    table_data = pd.DataFrame({
+        "Metric": ["Annualized Return (CAGR)", "Annualized Volatility", "Sharpe Ratio"],
+        "Backtest": [f"{cagr_bt:.2%}", f"{vol_bt:.2%}", f"{sharpe_bt:.2f}"],
+        "Real-Time": [f"{cagr_rt:.2%}", f"{vol_rt:.2%}", f"{sharpe_rt:.2f}"],
+        "p-value": [f"{p_mean:.4f}", f"{p_vol:.4f}", ""],
+        "Interpretation": [interp(p_mean), interp(p_vol), ""]
+    }).set_index("Metric")
 
     render_black_table(table_data)
 
-    # --- Plot with Plotly (aligned with other charts) ---
-    metrics = ["Annualized Return (CAGR)", "Annualized Volatility"]
+    # --- CHART ---
+    metrics = ["CAGR", "Volatility", "Sharpe"]
+
     fig_stat = go.Figure()
 
-    # Semi-transparent bars
     fig_stat.add_trace(go.Bar(
         x=metrics,
-        y=[cagr_bt, vol_bt],
+        y=[cagr_bt, vol_bt, sharpe_bt],
         name="Backtest",
         marker_color='rgba(0, 0, 255, 0.5)'
     ))
+
     fig_stat.add_trace(go.Bar(
         x=metrics,
-        y=[cagr_rt, vol_rt],
+        y=[cagr_rt, vol_rt, sharpe_rt],
         name="Real-Time",
         marker_color='rgba(255, 0, 0, 0.5)'
     ))
 
-    # Layout matching other charts
     fig_stat.update_layout(
         title="Backtest vs Real-Time Metrics",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0.6)",
         plot_bgcolor="rgba(0,0,0,0.6)",
-        xaxis=dict(title="", color='white'),
-        yaxis=dict(title="Annualized Value", tickformat=".0%", color='white'),
         barmode='group',
-        legend=dict(font=dict(color='white')),
-        width=600,
-        height=350,
-        margin=dict(l=40, r=40, t=50, b=40)
+        yaxis_title="Value"
     )
-    
+
     st.plotly_chart(fig_stat, use_container_width=True)
     
     
