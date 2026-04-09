@@ -9,7 +9,6 @@ import matplotlib.colors as mcolors
 import os
 from scipy.stats import ttest_ind, levene
 from matplotlib.ticker import PercentFormatter
-import statsmodels.api as sm
 
 
 # --- Page setup ---
