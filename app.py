@@ -9,6 +9,7 @@ import matplotlib.colors as mcolors
 import os
 from scipy.stats import ttest_ind, levene
 from matplotlib.ticker import PercentFormatter
+import statsmodels.api as sm
 
 
 # --- Page setup ---
@@ -651,7 +652,6 @@ with st.expander("📈 View Detailed Performance"):
 #
 
 # --- Statistical Test Section as an expander ---
-import statsmodels.api as sm
 
 with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False):
 
