@@ -664,15 +664,15 @@ with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False)
     rt = df_stat['Real_Time']
 
     # --- Spread (core object for inference) ---
-    spread = rt - bt
+    spread = (rt - bt).dropna()
 
     # --- HAC (Newey-West) test on mean spread ---
     X = np.ones(len(spread))  # intercept only
     model = sm.OLS(spread, X).fit(cov_type='HAC', cov_kwds={'maxlags':5})
 
-    alpha_daily = model.params[0]
-    t_stat = model.tvalues[0]
-    p_value = model.pvalues[0]
+    alpha_daily = model.params.iloc[0]
+    t_stat = model.tvalues.iloc[0]
+    p_value = model.pvalues.iloc[0]
 
     # --- Annualized metrics ---
     def annualized_metrics(daily_returns):
