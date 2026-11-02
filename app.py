@@ -118,7 +118,7 @@ st.markdown(
 st.markdown("### Select Period")
 period_button = st.radio(
     "",
-    ["1M", "3M", "6M", "1Y", "5Y", "All"],
+    ["1M", "3M", "6M", "1Y", "5Y", "All", "Live"],
     index=4,
     horizontal=True
 )
@@ -137,17 +137,46 @@ elif period_button == "5Y":
     slider_start = latest_date - pd.DateOffset(years=5)
 elif period_button == "All":
     slider_start = df.index.min()
+elif period_button == "Live":
+    slider_start = inception_date
 
     
     
     
 # PART 2
 # --- Date slider (controlled by period buttons) ---
+slider_min = max(df_cum.index.min(), inception_date) if period_button == "Live" else df_cum.index.min()
+if slider_min > latest_date:
+    st.warning("No reporting results are available on or after the configured live inception date.")
+    st.stop()
+slider_start = max(slider_min, min(slider_start, latest_date))
+if period_button == "Live":
+    st.caption(
+        f"Live reporting inception: {inception_date:%d %b %Y}. "
+        "Account status (live versus paper) is not independently verified."
+    )
+    reporting_dates = df.index[df.index >= inception_date]
+    recorded_dates = full_bt_rt["Real_Time"].dropna().index
+    recorded_dates = recorded_dates[recorded_dates >= inception_date]
+    if len(reporting_dates.difference(recorded_dates)) or len(recorded_dates.difference(reporting_dates)):
+        st.caption("The reporting exports contain different dates; reconciliation is pending.")
+
+# A new period starts at its full preset range; slider edits within that period persist.
+date_range_key = "qqs_dashboard_date_range"
+saved_range = st.session_state.get(date_range_key)
+period_changed = st.session_state.get("qqs_dashboard_period") != period_button
+range_outside_data = saved_range is not None and (
+    pd.Timestamp(saved_range[0]) < slider_min or pd.Timestamp(saved_range[1]) > latest_date
+)
+if period_changed or range_outside_data:
+    st.session_state.pop(date_range_key, None)
+st.session_state["qqs_dashboard_period"] = period_button
 start_date, end_date = st.slider(
     "📅 Select Date Range",
-    min_value=df_cum.index.min().to_pydatetime(),
+    min_value=slider_min.to_pydatetime(),
     max_value=df_cum.index.max().to_pydatetime(),
-    value=(slider_start.to_pydatetime(), latest_date.to_pydatetime())
+    value=(slider_start.to_pydatetime(), latest_date.to_pydatetime()),
+    key=date_range_key
 )
 
 if (end_date - start_date).days < 30:
