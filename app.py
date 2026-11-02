@@ -487,10 +487,15 @@ with st.expander("📈 View Detailed Performance"):
         filtered_df = filtered_weights[filtered_weights['Rescaled_Weights'] > 0].copy()
         unique_tickers = sorted(filtered_df['Ticker'].unique())
         num_tickers = len(unique_tickers)
-        colors = cm.tab20(np.linspace(0, 1, num_tickers))
-        colors_hex = [plt.cm.colors.to_hex(c) for c in colors]
-        color_map = dict(zip(unique_tickers, colors_hex))
-        color_map['VOO'] = '#BBBBBB'
+        # Bright categorical colors remain legible on the black dashboard.
+        weights_palette = [
+            '#56B4E9', '#E69F00', '#009E73', '#F0E442', '#CC79A7',
+            '#00BFC4', '#FF7F50', '#A5D76E', '#B79CED', '#FF99B4',
+            '#80CBC4', '#FFD166', '#90CAF9', '#B0BEC5',
+        ]
+        color_map = {ticker: weights_palette[i % len(weights_palette)]
+                     for i, ticker in enumerate(unique_tickers)}
+        color_map['VOO'] = '#E6E6E6'
     
         date_groups = filtered_df.groupby(filtered_df.index)
         data, dates = [], []
@@ -511,9 +516,9 @@ with st.expander("📈 View Detailed Performance"):
                 x=weights_matrix.index,
                 y=prev + weights_matrix[ticker],
                 mode='lines',
-                line=dict(width=0, color='rgba(0,0,0,0)'),
+                line=dict(width=0.5, color=color_map[ticker]),
                 fill='tozeroy' if i == 0 else 'tonexty',
-                fillcolor=f'rgba{(*mcolors.to_rgb(color_map[ticker]), 0.7)}',
+                fillcolor=color_map[ticker],
                 name=ticker,
                 hoverinfo='x+y+name'
             ))
@@ -523,10 +528,12 @@ with st.expander("📈 View Detailed Performance"):
             title="Portfolio Weights Over Time",
             xaxis_title="Date",
             yaxis_title="Weight",
-            yaxis=dict(tickformat=".0%"),
+            yaxis=dict(tickformat=".0%", gridcolor="#333638"),
+            xaxis=dict(gridcolor="#333638"),
             template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0.6)",
-            plot_bgcolor="rgba(0,0,0,0.6)",
+            paper_bgcolor="#080909",
+            plot_bgcolor="#101212",
+            font=dict(color="#F0EEE7"),
             showlegend=True
         )
         
@@ -537,18 +544,18 @@ with st.expander("📈 View Detailed Performance"):
         fig_pie = go.Figure(go.Pie(
             labels=avg_weights.index,
             values=avg_weights.values,
-            marker_colors=[
-                f"rgba({int(r*255)},{int(g*255)},{int(b*255)},{0.8})"
-                for t in avg_weights.index
-                for r, g, b in [mcolors.to_rgb(color_map[t])]
-            ],
+            marker=dict(
+                colors=[color_map[t] for t in avg_weights.index],
+                line=dict(color="#080909", width=1),
+            ),
             hole=0.3
         ))
         fig_pie.update_layout(
             title="Average Portfolio Weights",
             template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0.6)",
-            plot_bgcolor="rgba(0,0,0,0.6)"
+            paper_bgcolor="#080909",
+            plot_bgcolor="#101212",
+            font=dict(color="#F0EEE7")
         )
         st.plotly_chart(fig_pie, use_container_width=True)
     
