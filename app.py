@@ -12,6 +12,76 @@ from matplotlib.ticker import PercentFormatter
 import statsmodels.api as sm
 
 
+def checked_returns(values):
+    if values.empty or not values.index.is_unique or not values.index.is_monotonic_increasing:
+        raise ValueError('Returns need unique, ascending dates')
+    if not np.isfinite(values).all().all() or (values <= -1).any().any():
+        raise ValueError('Returns contain missing or invalid observations')
+    return values.astype(float)
+
+
+def compounded_growth(values):
+    return (1 + checked_returns(values)).cumprod()
+
+
+def compounded_period_returns(values, frequency):
+    return period_groups(1 + checked_returns(values), frequency).prod(min_count=1) - 1
+
+
+def period_groups(values, frequency):
+    modern = {'M':'ME', 'Q':'QE', 'Y':'YE'}.get(frequency, frequency)
+    legacy = {'ME':'M', 'QE':'Q', 'YE':'Y'}.get(frequency, frequency)
+    try:
+        return values.resample(modern)
+    except ValueError:
+        return values.resample(legacy)
+
+
+def return_drawdown(values):
+    wealth = compounded_growth(values)
+    peaks = wealth.cummax().clip(lower=1.0)
+    return wealth / peaks - 1
+
+
+def performance_metrics(series, benchmark):
+    pair = pd.concat([series.rename('strategy'), benchmark.rename('benchmark')], axis=1)
+    pair = checked_returns(pair)
+    series, benchmark = pair.strategy, pair.benchmark
+    n = len(series)
+    wealth = compounded_growth(series)
+    total = wealth.iloc[-1] - 1
+    cagr = wealth.iloc[-1] ** (252 / n) - 1
+    vol = series.std(ddof=1) * np.sqrt(252) if n > 1 else np.nan
+    sharpe = series.mean() * 252 / vol if vol > 0 else np.nan
+    drawdown = return_drawdown(series)
+    worst = drawdown.min()
+    trough = drawdown.idxmin()
+    previous = wealth.loc[:trough]
+    peak = max(1.0, float(previous.max()))
+    if previous.max() < 1.0:
+        peak_label = 'Start of selected period'
+    else:
+        peak_label = str(previous.idxmax().date())
+    recovery = wealth.loc[trough:][wealth.loc[trough:] >= peak].first_valid_index()
+    recovery_days = (recovery - trough).days if recovery is not None else np.nan
+    def hit_ratio(frequency):
+        strategy_periods = compounded_period_returns(series, frequency)
+        benchmark_periods = compounded_period_returns(benchmark, frequency)
+        return (strategy_periods > benchmark_periods).mean()
+    return {
+        'Total Return (Selected Period)': f'{total:.2%}',
+        'CAGR (Annualized)': f'{cagr:.2%}',
+        'Volatility (Annualized)': f'{vol:.2%}',
+        'Sharpe Ratio (Risk-Free = 0)': f'{sharpe:.2f}',
+        'Max Drawdown': f'{worst:.2%}',
+        'Max Drawdown Period': f'{peak_label} → {trough.date()}' if worst < 0 else 'No drawdown',
+        'Drawdown Recovery Time (Days)': str(int(recovery_days)) if not np.isnan(recovery_days) else 'Not Recovered',
+        'Monthly Hit Ratio vs Benchmark': f'{hit_ratio("M"):.1%}',
+        'Quarterly Hit Ratio vs Benchmark': f'{hit_ratio("Q"):.1%}',
+        'Annual Hit Ratio vs Benchmark': f'{hit_ratio("Y"):.1%}',
+    }
+
+
 # --- Page setup ---
 st.set_page_config(page_title="AdaptiveShield-VT18 Dashboard", layout="wide")
 
@@ -44,7 +114,7 @@ df = pd.read_pickle("Str_Bench_RET.pkl")
 #df.index = pd.to_datetime(df["Date"])
 df["Date"] = pd.to_datetime(df["Date"])
 df = df.set_index("Date")
-df = df[["Strat_Ret", "Bench_Ret"]]
+df = checked_returns(df[["Strat_Ret", "Bench_Ret"]])
 
 backtest_STR_Weights = pd.read_pickle("backtest_STR_Weights.pkl")
 backtest_STR_Weights.index = pd.to_datetime(backtest_STR_Weights.index)
@@ -57,7 +127,7 @@ full_bt_rt.index = pd.to_datetime(full_bt_rt.index)
 
 # cumulative version
 full_bt_rt_cum = (1 + full_bt_rt).cumprod()
-full_bt_rt_cum = full_bt_rt_cum / full_bt_rt_cum.iloc[0]
+# Keep the first included return; all growth curves start before it.
 
 ##################################################################
 
@@ -85,11 +155,18 @@ ticker_descriptions = {
 inception_date = pd.Timestamp("2026-02-05")
 
 # --- Cumulative returns ---
-df_cum = (1 + df).cumprod()
-df_cum = df_cum / df_cum.iloc[0]
+df_cum = compounded_growth(df)
+# The post-inception hypothetical path shares the strategy historical base.
+hypothetical_continuation = df["Strat_Ret"].copy()
+post_inception = hypothetical_continuation.index >= inception_date
+hypothetical_continuation.loc[post_inception] = full_bt_rt["Full_Backtest"].reindex(hypothetical_continuation.index[post_inception])
+hypothetical_growth = compounded_growth(hypothetical_continuation)
+full_bt_rt_cum["Full_Backtest"] = hypothetical_growth.reindex(full_bt_rt_cum.index)
 
 # --- Header ---
 st.title("📊 AdaptiveShield-VT18 Performance Dashboard")
+st.caption("Real-time strategy: executed daily P/L on recorded strategy capital, including recorded cash adjustments. "
+           "VOO: dividend-adjusted close returns. Backtest curves are hypothetical; account-NAV reconciliation remains under review.")
 
 # --- Highlights ---
 col_h, col_r = st.columns([3, 1])
@@ -184,62 +261,19 @@ if (end_date - start_date).days < 30:
     st.stop()
 
 # --- Filtered data ---
-df_filtered = df.loc[start_date:end_date]
+df_filtered = df.loc[start_date:end_date].copy()
 filtered_weights = backtest_STR_Weights.loc[start_date:end_date]
 
 # --- Performance Metrics Function ---
 def compute_metrics(series, benchmark):
-    series = series.dropna()
-    benchmark = benchmark.loc[series.index].dropna()
-
-    total_return = (1 + series).prod() - 1
-    num_days = len(series)
-    ann_return = (1 + total_return)**(252 / num_days) - 1 if num_days > 0 else np.nan
-    vol = series.std() * np.sqrt(252) if num_days > 1 else np.nan
-    sharpe = ann_return / vol if vol != 0 else np.nan
-
-    cumulative = (1 + series).cumprod()
-    cummax = cumulative.cummax()
-    drawdowns = cumulative / cummax - 1
-    max_drawdown = drawdowns.min()
-    end_date_dd = drawdowns.idxmin()
-    start_date_dd = cumulative.loc[:end_date_dd].idxmax()
-    post_dd = cumulative.loc[end_date_dd:]
-    recovery_date = post_dd[post_dd >= cumulative[start_date_dd]].first_valid_index()
-    recovery_days = (recovery_date - end_date_dd).days if recovery_date is not None else np.nan
-
-    monthly = series.resample('ME').sum()
-    benchmark_monthly = benchmark.resample('ME').sum()
-    benchmark_monthly = benchmark_monthly.reindex(monthly.index)
-    monthly_hit = (monthly > benchmark_monthly).sum() / len(monthly) if len(monthly) > 0 else np.nan
-
-    quarterly = series.resample('QE').sum()
-    benchmark_quarterly = benchmark.resample('QE').sum()
-    quarterly_hit = (quarterly > benchmark_quarterly).sum() / len(quarterly) if len(quarterly) > 0 else np.nan
-
-    annual = series.resample('YE').sum()
-    benchmark_annual = benchmark.resample('YE').sum()
-    annual_hit = (annual > benchmark_annual).sum() / len(annual) if len(annual) > 0 else np.nan
-
-    return {
-        "Total Return (Since Inception)": f"{total_return:.2%}",
-        "CAGR (Annualized)": f"{ann_return:.2%}",
-        "Volatility (Annualized)": f"{vol:.2%}",
-        "Sharpe Ratio (CAGR / Vol)": f"{sharpe:.2f}",
-        "Max Drawdown": f"{max_drawdown:.2%}",
-        "Max Drawdown Period": f"{start_date_dd.date()} → {end_date_dd.date()}",
-        "Drawdown Recovery Time (Days)": f"{int(recovery_days) if not np.isnan(recovery_days) else 'Not Recovered'}",
-        "Monthly Hit Ratio vs Benchmark": f"{monthly_hit:.1%}",
-        "Quarterly Hit Ratio vs Benchmark": f"{quarterly_hit:.1%}",
-        "Annual Hit Ratio vs Benchmark": f"{annual_hit:.1%}"
-    }
+    return performance_metrics(series, benchmark)
 
 # --- Metrics ---
 
 ###############################
 
-# ✅ Temporary fix: replace NaNs in benchmark returns with 0
-df_filtered["Bench_Ret"] = df_filtered["Bench_Ret"].fillna(0)
+# Refuse incomplete benchmark observations instead of inventing zero returns.
+df_filtered = checked_returns(df_filtered)
 
 ###############################
 
@@ -298,7 +332,7 @@ with col1:
     ))
     
     # same strategy but dashed AFTER inception
-    full_bt_post = full_bt_rt_cum.loc[inception_date:end_date]
+    full_bt_post = full_bt_rt_cum.reindex(strat_post.index)
     fig_orig.add_trace(go.Scatter(
         x=strat_post.index,
         #y=strat_post["Strat_Ret"],
@@ -333,7 +367,7 @@ with col1:
     fig_orig.update_layout(
         title="Cumulative Return: Full History",
         xaxis_title="Date",
-        yaxis_title="Cumulative Return",
+        yaxis_title="Growth of 1",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0.6)",
         plot_bgcolor="rgba(0,0,0,0.6)"
@@ -341,7 +375,7 @@ with col1:
     st.plotly_chart(fig_orig, use_container_width=True)
 
 with col2:
-    filtered_norm = filtered / filtered.iloc[0]
+    filtered_norm = compounded_growth(df_filtered)
     backtest_norm = filtered_norm[filtered_norm.index < inception_date]
     realtime_norm = filtered_norm[filtered_norm.index >= inception_date]
     fig_norm = go.Figure()
@@ -350,8 +384,8 @@ with col2:
     ################### Added April 2nd, 2026. ######################
     
     # normalized dashed full backtest after inception
-    full_bt_norm = full_bt_rt_cum.loc[start_date:end_date]
-    full_bt_norm = full_bt_norm / full_bt_norm.iloc[0]
+    full_bt_norm = compounded_growth(hypothetical_continuation.loc[df_filtered.index]).to_frame("Full_Backtest")
+    full_bt_norm = full_bt_norm.loc[full_bt_norm.index >= inception_date]
     
     fig_norm.add_trace(go.Scatter(
         x=full_bt_norm.index,
@@ -370,9 +404,9 @@ with col2:
         fig_norm.add_shape(type="line", x0=inception_date, y0=filtered_norm.min().min(), x1=inception_date, y1=filtered_norm.max().max(), line=dict(color="red", width=2, dash="dash"))
         fig_norm.add_annotation(x=inception_date, y=filtered_norm.max().max(), text="Inception", showarrow=False, yanchor="bottom", yshift=20, font=dict(color="red", size=12))
     fig_norm.update_layout(
-        title="Cumulative Return: Normalized to Slider Start",
+        title="Cumulative Growth: Selected Period",
         xaxis_title="Date",
-        yaxis_title="Normalized Return",
+        yaxis_title="Growth of 1",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0.6)",
         plot_bgcolor="rgba(0,0,0,0.6)"
@@ -390,8 +424,8 @@ with st.expander("📈 View Detailed Performance"):
     
     periods = {"Monthly": "ME", "Quarterly": "QE", "Annual": "YE"}
     for name, freq in periods.items():
-        ret = df_filtered.resample(freq).apply(lambda x: (1 + x).prod() - 1)
-        vol = df_filtered.resample(freq).std() * np.sqrt(252)
+        ret = period_groups(df_filtered, freq).apply(lambda x: (1 + x).prod() - 1)
+        vol = period_groups(df_filtered, freq).std() * np.sqrt(252)
         ret = ret.loc[ret.index <= df_filtered.index.max()]
         vol = vol.loc[vol.index <= df_filtered.index.max()]
     
@@ -447,7 +481,7 @@ with st.expander("📈 View Detailed Performance"):
     cumulative = (1 + df_filtered).cumprod()
     
     # Compute drawdowns
-    drawdown = cumulative / cumulative.cummax() - 1
+    drawdown = return_drawdown(df_filtered)
     
     # Split strategy drawdown pre- and post-inception
     drawdown_backtest = drawdown[drawdown.index < inception_date]
@@ -716,7 +750,7 @@ with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False)
         total_return = (1 + daily_returns).prod() - 1
         cagr = (1 + total_return)**(252 / n_days) - 1 if n_days > 0 else np.nan
         vol = daily_returns.std() * np.sqrt(252) if n_days > 1 else np.nan
-        sharpe = cagr / vol if vol > 0 else np.nan
+        sharpe = daily_returns.mean() * 252 / vol if vol > 0 else np.nan
         return cagr, vol, sharpe
 
     cagr_bt, vol_bt, sharpe_bt = annualized_metrics(bt)
@@ -733,7 +767,7 @@ with st.expander("📊 View Comparison - Backtest vs Real-Time", expanded=False)
         "Metric": [
             "Annualized Return (CAGR)",
             "Annualized Volatility",
-            "Sharpe Ratio",
+            "Sharpe Ratio (Risk-Free = 0)",
             "Alpha (RT-BT)",
             "p-value (HAC)"
         ],
