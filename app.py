@@ -156,17 +156,19 @@ inception_date = pd.Timestamp("2026-02-05")
 
 # --- Cumulative returns ---
 df_cum = compounded_growth(df)
+df_cum = df_cum / df_cum.iloc[0]
 # The post-inception hypothetical path shares the strategy historical base.
 hypothetical_continuation = df["Strat_Ret"].copy()
 post_inception = hypothetical_continuation.index >= inception_date
 hypothetical_continuation.loc[post_inception] = full_bt_rt["Full_Backtest"].reindex(hypothetical_continuation.index[post_inception])
 hypothetical_growth = compounded_growth(hypothetical_continuation)
+hypothetical_growth = hypothetical_growth / hypothetical_growth.iloc[0]
 full_bt_rt_cum["Full_Backtest"] = hypothetical_growth.reindex(full_bt_rt_cum.index)
 
 # --- Header ---
 st.title("📊 AdaptiveShield-VT18 Performance Dashboard")
-st.caption("Real-time strategy: executed daily P/L on recorded strategy capital, including recorded cash adjustments. "
-           "VOO: dividend-adjusted close returns. Backtest curves are hypothetical; account-NAV reconciliation remains under review.")
+st.caption("Real-time strategy: original weights × execution-price returns, with Open substitutions where fills are absent. "
+           "VOO: dividend-adjusted close returns. Charts start at 1 on the first displayed date. Backtests are hypothetical; execution-accounting review remains pending.")
 
 # --- Highlights ---
 col_h, col_r = st.columns([3, 1])
@@ -376,6 +378,7 @@ with col1:
 
 with col2:
     filtered_norm = compounded_growth(df_filtered)
+    filtered_norm = filtered_norm / filtered_norm.iloc[0]
     backtest_norm = filtered_norm[filtered_norm.index < inception_date]
     realtime_norm = filtered_norm[filtered_norm.index >= inception_date]
     fig_norm = go.Figure()
@@ -385,6 +388,7 @@ with col2:
     
     # normalized dashed full backtest after inception
     full_bt_norm = compounded_growth(hypothetical_continuation.loc[df_filtered.index]).to_frame("Full_Backtest")
+    full_bt_norm = full_bt_norm / full_bt_norm.iloc[0]
     full_bt_norm = full_bt_norm.loc[full_bt_norm.index >= inception_date]
     
     fig_norm.add_trace(go.Scatter(
